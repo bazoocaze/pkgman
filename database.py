@@ -1,7 +1,7 @@
 """
-database.py - Leitura e escrita do arquivo ~/.installed_packages.json
+database.py - Read and write ~/.installed_packages.json
 
-Formato:
+Format:
 {
     "version": 1,
     "sudo": "no",
@@ -17,15 +17,15 @@ from pathlib import Path
 
 
 class Database:
-    """Gerencia o banco de dados de pacotes instalados manualmente."""
+    """Manages the database of manually installed packages."""
 
     def __init__(self, path=None):
         self.path = Path(path) if path else Path.home() / ".installed_packages.json"
         self.sudo = "no"
 
     def load(self):
-        """Retorna a lista de pacotes do arquivo.
-        Se não existir ou estiver vazio/malformado, retorna lista vazia."""
+        """Return the list of packages from the file.
+        If the file doesn't exist or is empty/malformed, return an empty list."""
         if not self.path.exists() or self.path.stat().st_size == 0:
             self.sudo = "no"
             return []
@@ -39,28 +39,28 @@ class Database:
             return []
 
     def save(self, packages):
-        """Salva a lista de pacotes no arquivo."""
+        """Save the list of packages to the file."""
         data = {"version": 1, "sudo": self.sudo, "packages": packages}
         with open(self.path, "w") as f:
             json.dump(data, f, indent=2)
 
     def add(self, package):
-        """Adiciona um pacote, ignorando duplicações (por nome)."""
+        """Add a package, ignoring duplicates by name."""
         packages = self.load()
         for pkg in packages:
             if pkg["name"] == package["name"]:
-                return  # já existe, ignora
+                return  # already exists, skip
         packages.append(package)
         self.save(packages)
 
     def remove(self, name):
-        """Remove um pacote do banco pelo nome."""
+        """Remove a package from the database by name."""
         packages = self.load()
         packages = [p for p in packages if p["name"] != name]
         self.save(packages)
 
     def find(self, name):
-        """Busca um pacote pelo nome. Retorna None se não encontrar."""
+        """Find a package by name. Returns None if not found."""
         for pkg in self.load():
             if pkg["name"] == name:
                 return pkg

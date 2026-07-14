@@ -1,7 +1,7 @@
 """
-managers.py - Detecção e execução dos gerenciadores de pacotes
+managers.py - Detection and execution of package managers
 
-Suporta: apt (Debian/Ubuntu), yum (RHEL/CentOS), brew (macOS)
+Supported: apt (Debian/Ubuntu), yum (RHEL/CentOS), brew (macOS)
 """
 
 import subprocess
@@ -9,17 +9,17 @@ import shutil
 
 
 class Manager:
-    """Representa um gerenciador de pacotes do SO."""
+    """Represents an OS package manager."""
 
     def __init__(self, name):
         self.name = name
 
     @staticmethod
     def detect():
-        """Detecta o gerenciador disponível no sistema.
+        """Detect the available package manager on the system.
 
-        Ordem de preferência: brew -> apt -> yum
-        Retorna None se nenhum for encontrado.
+        Preference order: brew -> apt -> yum
+        Returns None if none is found.
         """
         for mgr in ["brew", "apt", "yum"]:
             if shutil.which(mgr):
@@ -27,21 +27,21 @@ class Manager:
         return None
 
     def install(self, package_name, sudo=False):
-        """Instala um pacote usando o gerenciador."""
+        """Install a package using the manager."""
         cmd = self._build_cmd("install", package_name)
         if sudo:
             cmd = ["sudo"] + cmd
         subprocess.run(cmd, check=True)
 
     def remove(self, package_name, sudo=False):
-        """Remove um pacote usando o gerenciador."""
+        """Remove a package using the manager."""
         cmd = self._build_cmd("remove", package_name)
         if sudo:
             cmd = ["sudo"] + cmd
         subprocess.run(cmd, check=True)
 
     def _build_cmd(self, action, package_name):
-        """Monta a lista de argumentos para o subprocess."""
+        """Build the argument list for subprocess."""
         if self.name == "apt":
             return [self.name, action, "-y", package_name]
         elif self.name == "yum":

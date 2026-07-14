@@ -1,34 +1,34 @@
 # pkgman
 
-Layer declarativo sobre gerenciadores de pacotes do SO. Gerencia a lista de
-pacotes instalados **manualmente** (separando-os de dependências do sistema)
-e permite **replay** completo em estações novas.
+Declarative layer over OS package managers. Manages the list of **manually**
+installed packages (separating them from system dependencies) and allows
+full **replay** on fresh machines.
 
-## Comandos
+## Commands
 
 ```
-pkgman install git jq                      # instala pacotes do SO
-pkgman install --url uv <url>              # instala script via curl | bash
-pkgman install -a                          # replay: reinstala TUDO do banco
-pkgman remove git                          # desinstala + remove do banco
-pkgman remove uv                           # só remove do banco (script)
-pkgman list                                # lista pacotes registrados
-pkgman -f ~/meu_banco.json list            # usa banco alternativo
+pkgman install git jq                      # install OS packages
+pkgman install --url uv <url>              # install script via curl | bash
+pkgman install -a                          # replay: reinstall ALL from the database
+pkgman remove git                          # uninstall + remove from database
+pkgman remove uv                           # only remove from database (script)
+pkgman list                                # list registered packages
+pkgman -f ~/my_database.json list          # use an alternative database
 ```
 
-## Arquitetura
+## Architecture
 
 ```
 pkgman.py          → entry point + argparse
-commands.py        → orquestrador (install/remove/list)
-database.py        → CRUD do ~/.installed_packages.json
-managers.py        → detecção + execução de apt/yum/brew
-scripts.py         → execução de curl | bash
+commands.py        → orchestrator (install/remove/list)
+database.py        → CRUD for ~/.installed_packages.json
+managers.py        → detection + execution of apt/yum/brew
+scripts.py         → execution of curl | bash
 ```
 
 ### database.py
 
-Lê/escreve `~/.installed_packages.json` no formato:
+Reads/writes `~/.installed_packages.json` in the following format:
 
 ```json
 {
@@ -41,48 +41,47 @@ Lê/escreve `~/.installed_packages.json` no formato:
 }
 ```
 
-Métodos (instância): `load()`, `save()`, `add()`, `remove()`, `find()`.
+Instance methods: `load()`, `save()`, `add()`, `remove()`, `find()`.
 
-O caminho do arquivo pode ser personalizado com o parâmetro `path` no
-construtor ou via flag `-f`/`--file` na CLI.
+The file path can be customized via the `path` parameter in the constructor
+or via the `-f`/`--file` CLI flag.
 
 ### managers.py
 
-- `Manager.detect()` → detecta o gerenciador disponível (brew > apt > yum)
-- `manager.install(name, sudo=False)` → executa `apt install -y name` (ou equivalente)
-- `manager.remove(name, sudo=False)` → executa `apt remove -y name` (ou equivalente)
-- Quando `sudo=True`, prefixa o comando com `sudo`
-  (ex: `["sudo", "apt", "install", "-y", "git"]`)
+- `Manager.detect()` → detects the available manager (brew > apt > yum)
+- `manager.install(name, sudo=False)` → runs `apt install -y name` (or equivalent)
+- `manager.remove(name, sudo=False)` → runs `apt remove -y name` (or equivalent)
+- When `sudo=True`, prefixes the command with `sudo`
+  (e.g. `["sudo", "apt", "install", "-y", "git"]`)
 
 ### scripts.py
 
-- `ScriptRunner.run(url)` → executa `curl -fsSL <url> | bash`
+- `ScriptRunner.run(url)` → runs `curl -fsSL <url> | bash`
 
 ### commands.py
 
-Orquestra as operações. A ordem sempre é:
-1. Executa o comando no sistema
-2. Se falhar → **não altera o banco** (exceção propaga)
-3. Se OK → atualiza `~/.installed_packages.json` (ou o especificado com `-f`)
+Orchestrates the operations. The order is always:
+1. Execute the command on the system
+2. If it fails → **does not change the database** (exception propagates)
+3. If OK → updates `~/.installed_packages.json` (or the one specified with `-f`)
 
 ### pkgman.py
 
-CLI com `argparse`. Subcomandos: `install`, `remove`, `list`.
+CLI with `argparse`. Subcommands: `install`, `remove`, `list`.
 
-## Banco de dados
+## Database
 
-Arquivo: `~/.installed_packages.json` (padrão) ou personalizado via `-f`/`--file`
+File: `~/.installed_packages.json` (default) or custom via `-f`/`--file`
 
-- Versionado para permitir evolução futura do schema
-- Arquivo vazio ou malformado → tratado como lista vazia
-- Duplicatas ignoradas por nome (case-sensitive)
+- Versioned to allow future schema evolution
+- Empty or malformed file → treated as an empty list
+- Duplicates ignored by name (case-sensitive)
 
 ## Sudo
 
-O campo `"sudo"` no JSON controla se os comandos do gerenciador de pacotes
-são executados com `sudo`. Valor padrão é `"no"`; pode ser alterado
-manualmente para `"yes"`. Toda gravação no arquivo persiste o valor
-explicitamente.
+The `"sudo"` field in the JSON controls whether package manager commands are
+run with `sudo`. Default value is `"no"`; can be manually changed to `"yes"`.
+Every write to the file persists the value explicitly.
 
 ```json
 {
@@ -92,22 +91,22 @@ explicitamente.
 }
 ```
 
-Quando `"sudo": "yes"`, os comandos executados pelo `Manager` são prefixados
-com `sudo`, tanto em `install` quanto em `remove`. Scripts instalados via
-`--url` não são afetados (executam como `curl | bash` sem sudo).
+When `"sudo": "yes"`, commands executed by `Manager` are prefixed with `sudo`
+on both `install` and `remove`. Scripts installed via `--url` are not affected
+(they run as `curl | bash` without sudo).
 
-## Gerenciadores suportados
+## Supported managers
 
-| Gerenciador | Detectado por | Install | Remove |
+| Manager | Detected by | Install | Remove |
 |---|---|---|---|
 | brew | `which brew` | `brew install` | `brew uninstall` |
 | apt  | `which apt`  | `apt install -y` | `apt remove -y` |
 | yum  | `which yum`  | `yum install -y` | `yum remove -y` |
 
-Detecção automática na inicialização. O gerenciador usado independe de como o
-pacote foi originalmente instalado — usa-se sempre o disponível no sistema
-atual (torna o banco portátil entre Linux e macOS).
+Automatic detection at startup. The manager used is independent of how the
+package was originally installed — it always uses whatever is available on
+the current system (making the database portable between Linux and macOS).
 
-## Licença
+## License
 
 MIT

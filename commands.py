@@ -1,5 +1,5 @@
 """
-commands.py - Lógica dos comandos install, remove, list
+commands.py - Orchestrates install, remove, list commands
 """
 
 import sys
@@ -9,16 +9,16 @@ from scripts import ScriptRunner
 
 
 class Commands:
-    """Orquestra a execução dos comandos da CLI."""
+    """Orchestrates the execution of CLI commands."""
 
     def __init__(self, db_path=None):
         self.db = Database(db_path)
-        self.db.load()  # carrega o flag sudo (se arquivo existir)
+        self.db.load()  # loads the sudo flag (if file exists)
         self.manager = Manager.detect()
         if self.manager is None:
             print(
-                "Erro: Nenhum gerenciador de pacotes suportado encontrado.\n"
-                "  Necessário: apt, yum ou brew.",
+                "Error: No supported package manager found.\n"
+                "  Need: apt, yum or brew.",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -28,58 +28,58 @@ class Commands:
         return self.db.sudo == "yes"
 
     def install(self, names):
-        """Instala pacotes do SO pelo nome."""
+        """Install OS packages by name."""
         for name in names:
-            print(f"Instalando pacote: {name}")
+            print(f"Installing package: {name}")
             self.manager.install(name, sudo=self._use_sudo)
             self.db.add({"type": "package", "name": name})
-            print(f"  -> {name} instalado e registrado.")
+            print(f"  -> {name} installed and registered.")
 
     def install_url(self, name, url):
-        """Instala um script a partir de uma URL."""
-        print(f"Instalando script: {name}")
+        """Install a script from a URL."""
+        print(f"Installing script: {name}")
         print(f"  URL: {url}")
         ScriptRunner.run(url)
         self.db.add({"type": "script", "name": name, "url": url})
-        print(f"  -> {name} instalado e registrado.")
+        print(f"  -> {name} installed and registered.")
 
     def install_all(self):
-        """Reinstala todos os pacotes do banco de dados (replay)."""
+        """Reinstall all packages from the database (replay)."""
         packages = self.db.load()
         if not packages:
-            print("Nenhum pacote registrado para instalar.")
+            print("No registered packages to install.")
             return
 
         for pkg in packages:
             if pkg["type"] == "package":
-                print(f"Instalando pacote: {pkg['name']}")
+                print(f"Installing package: {pkg['name']}")
                 self.manager.install(pkg["name"], sudo=self._use_sudo)
             elif pkg["type"] == "script":
-                print(f"Instalando script: {pkg['name']}")
+                print(f"Installing script: {pkg['name']}")
                 print(f"  URL: {pkg['url']}")
                 ScriptRunner.run(pkg["url"])
-        print("Replay concluído.")
+        print("Replay complete.")
 
     def remove(self, names):
-        """Remove pacotes pelo nome."""
+        """Remove packages by name."""
         for name in names:
             pkg = self.db.find(name)
             if pkg is None:
-                print(f"Aviso: '{name}' não encontrado no banco de dados. Ignorando.")
+                print(f"Warning: '{name}' not found in database. Skipping.")
                 continue
 
             if pkg["type"] == "package":
-                print(f"Removendo pacote: {name}")
+                print(f"Removing package: {name}")
                 self.manager.remove(name, sudo=self._use_sudo)
 
             self.db.remove(name)
-            print(f"  -> {name} removido do banco de dados.")
+            print(f"  -> {name} removed from database.")
 
     def list(self):
-        """Lista todos os pacotes registrados."""
+        """List all registered packages."""
         packages = self.db.load()
         if not packages:
-            print("Nenhum pacote registrado.")
+            print("No registered packages.")
             return
 
         for pkg in packages:

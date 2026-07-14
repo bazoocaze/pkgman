@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-pkgman - Layer declarativo sobre gerenciadores de pacotes do SO
+pkgman - Declarative layer over OS package managers
 
-Gerencia a lista de pacotes instalados manualmente e permite replay
-em estações novas.
+Manages the list of manually installed packages and enables full replay
+on fresh machines.
 
-Uso:
+Usage:
     pkgman install git jq
     pkgman install --url uv https://astral.sh/uv/install.sh
     pkgman install -a
@@ -23,46 +23,46 @@ from commands import Commands
 def main():
     parser = argparse.ArgumentParser(
         prog="pkgman",
-        description="Gerencia pacotes instalados manualmente com suporte a replay.",
+        description="Manages manually installed packages with replay support.",
     )
     parser.add_argument(
         "-f", "--file",
-        metavar="ARQUIVO",
-        help="Caminho do banco de dados (padrão: ~/.installed_packages.json)",
+        metavar="FILE",
+        help="Path to the database file (default: ~/.installed_packages.json)",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # --- install ---
-    install_parser = subparsers.add_parser("install", help="Instala um ou mais pacotes")
+    install_parser = subparsers.add_parser("install", help="Install one or more packages")
     install_parser.add_argument(
         "names",
         nargs="*",
         metavar="PACKAGE",
-        help="Nomes dos pacotes do SO para instalar",
+        help="Names of OS packages to install",
     )
     install_parser.add_argument(
         "--url",
         nargs=2,
         metavar=("NAME", "URL"),
-        help="Instala um script a partir de uma URL (nome + url)",
+        help="Install a script from a URL (name + url)",
     )
     install_parser.add_argument(
         "-a", "--all",
         action="store_true",
-        help="Instala todos os pacotes do banco de dados (replay)",
+        help="Install all packages from the database (replay)",
     )
 
     # --- remove ---
-    remove_parser = subparsers.add_parser("remove", help="Remove um ou mais pacotes")
+    remove_parser = subparsers.add_parser("remove", help="Remove one or more packages")
     remove_parser.add_argument(
         "names",
         nargs="+",
         metavar="PACKAGE",
-        help="Nomes dos pacotes a remover",
+        help="Names of packages to remove",
     )
 
     # --- list ---
-    subparsers.add_parser("list", help="Lista os pacotes registrados")
+    subparsers.add_parser("list", help="List registered packages")
 
     args = parser.parse_args()
 
