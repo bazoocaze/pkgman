@@ -2,6 +2,7 @@
 commands.py - Orchestrates install, remove, list commands
 """
 
+import json
 import sys
 from database import Database
 from managers import Manager
@@ -75,16 +76,21 @@ class Commands:
             self.db.remove(name)
             print(f"  -> {name} removed from database.")
 
-    def list(self):
+    def list(self, json_output=False):
         """List all registered packages."""
         packages = self.db.load()
         if not packages:
-            print("No registered packages.")
+            if json_output:
+                print(json.dumps([], indent=2))
+            else:
+                print("No registered packages.")
             return
 
-        for pkg in packages:
-            if pkg["type"] == "package":
-                print(f"PACKAGE  {pkg['name']}")
-            elif pkg["type"] == "script":
-                print(f"SCRIPT   {pkg['name']}")
-                print(f"         {pkg['url']}")
+        if json_output:
+            print(json.dumps(packages, indent=2))
+        else:
+            for pkg in packages:
+                if pkg["type"] == "package":
+                    print(f"PACKAGE  {pkg['name']}")
+                elif pkg["type"] == "script":
+                    print(f"SCRIPT   {pkg['name']}  {pkg['url']}")

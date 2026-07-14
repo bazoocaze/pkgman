@@ -13,6 +13,7 @@ pkgman install -a                          # replay: reinstall ALL from the data
 pkgman remove git                          # uninstall + remove from database
 pkgman remove uv                           # only remove from database (script)
 pkgman list                                # list registered packages
+pkgman list --json                         # list as JSON
 pkgman -f ~/my_database.json list          # use an alternative database
 ```
 
@@ -24,7 +25,7 @@ commands.py        → orchestrator (install/remove/list)
 database.py        → CRUD for ~/.installed_packages.json
 managers.py        → detection + execution of apt/yum/brew
 scripts.py         → execution of curl | bash
-tests.py           → reusable test suite (18 checks)
+tests.py           → reusable test suite (20 checks)
 ```
 
 ### database.py
@@ -69,6 +70,8 @@ Orchestrates the operations. The order is always:
 ### pkgman.py
 
 CLI with `argparse`. Subcommands: `install`, `remove`, `list`.
+
+- `list --json` → outputs the package list as JSON instead of the default text format
 
 ## Database
 
@@ -117,7 +120,7 @@ python3 tests.py
 ```
 
 Covers database CRUD, manager command building, Commands orchestration, and
-CLI argument parsing (18 checks).
+CLI argument parsing (20 checks).
 
 ## License
 

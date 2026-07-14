@@ -62,7 +62,12 @@ def main():
     )
 
     # --- list ---
-    subparsers.add_parser("list", help="List registered packages")
+    list_parser = subparsers.add_parser("list", help="List registered packages")
+    list_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output in JSON format",
+    )
 
     args = parser.parse_args()
 
@@ -82,7 +87,7 @@ def main():
     elif args.command == "remove":
         cmds.remove(args.names)
     elif args.command == "list":
-        cmds.list()
+        cmds.list(json_output=args.json)
 
 
 if __name__ == "__main__":

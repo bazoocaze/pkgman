@@ -246,5 +246,54 @@ r = subprocess.run(
 assert r.returncode == 1
 print("  OK - install with no args exits with code 1")
 
+# 4g. list --json
+with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as f:
+    tmp4 = f.name
+with open(tmp4, "w") as f:
+    json.dump(
+        {
+            "version": 1,
+            "sudo": "no",
+            "packages": [
+                {"type": "package", "name": "git"},
+                {"type": "script", "name": "uv", "url": "https://example.com"},
+            ],
+        },
+        f,
+    )
+
+r = subprocess.run(
+    ["python3", "pkgman.py", "-f", tmp4, "list", "--json"],
+    capture_output=True,
+    text=True,
+)
+assert r.returncode == 0
+data = json.loads(r.stdout)
+assert len(data) == 2
+assert data[0]["name"] == "git"
+assert data[0]["type"] == "package"
+assert data[1]["name"] == "uv"
+assert data[1]["url"] == "https://example.com"
+print("  OK - list --json")
+
+os.unlink(tmp4)
+
+# 4h. list --json with empty database
+with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as f:
+    tmp5 = f.name
+with open(tmp5, "w") as f:
+    json.dump({"version": 1, "sudo": "no", "packages": []}, f)
+
+r = subprocess.run(
+    ["python3", "pkgman.py", "-f", tmp5, "list", "--json"],
+    capture_output=True,
+    text=True,
+)
+assert r.returncode == 0
+assert json.loads(r.stdout) == []
+print("  OK - list --json with empty database")
+
+os.unlink(tmp5)
+
 print()
 print("=== ALL TESTS PASSED ===")
