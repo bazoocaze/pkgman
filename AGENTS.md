@@ -13,6 +13,7 @@ pkgman install -a                          # replay: reinstala TUDO do banco
 pkgman remove git                          # desinstala + remove do banco
 pkgman remove uv                           # só remove do banco (script)
 pkgman list                                # lista pacotes registrados
+pkgman -f ~/meu_banco.json list            # usa banco alternativo
 ```
 
 ## Arquitetura
@@ -27,7 +28,7 @@ scripts.py         → execução de curl | bash
 
 ### database.py
 
-Lê/escreve `~/.installed_packages` no formato:
+Lê/escreve `~/.installed_packages.json` no formato:
 
 ```json
 {
@@ -39,7 +40,10 @@ Lê/escreve `~/.installed_packages` no formato:
 }
 ```
 
-Métodos estáticos: `load()`, `save()`, `add()`, `remove()`, `find()`.
+Métodos (instância): `load()`, `save()`, `add()`, `remove()`, `find()`.
+
+O caminho do arquivo pode ser personalizado com o parâmetro `path` no
+construtor ou via flag `-f`/`--file` na CLI.
 
 ### managers.py
 
@@ -64,7 +68,7 @@ CLI com `argparse`. Subcomandos: `install`, `remove`, `list`.
 
 ## Banco de dados
 
-Arquivo: `~/.installed_packages`
+Arquivo: `~/.installed_packages.json` (padrão) ou personalizado via `-f`/`--file`
 
 - Versionado para permitir evolução futura do schema
 - Arquivo vazio ou malformado → tratado como lista vazia
@@ -80,7 +84,7 @@ Arquivo: `~/.installed_packages`
 
 Detecção automática na inicialização. O gerenciador usado independe de como o
 pacote foi originalmente instalado — usa-se sempre o disponível no sistema
-atual (torna o `~/.installed_packages` portátil entre Linux e macOS).
+atual (torna o banco portátil entre Linux e macOS).
 
 ## Licença
 

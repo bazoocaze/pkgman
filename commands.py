@@ -11,8 +11,8 @@ from scripts import ScriptRunner
 class Commands:
     """Orquestra a execução dos comandos da CLI."""
 
-    def __init__(self):
-        self.db = Database()
+    def __init__(self, db_path=None):
+        self.db = Database(db_path)
         self.manager = Manager.detect()
         if self.manager is None:
             print(

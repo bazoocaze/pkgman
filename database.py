@@ -1,5 +1,5 @@
 """
-database.py - Leitura e escrita do arquivo ~/.installed_packages
+database.py - Leitura e escrita do arquivo ~/.installed_packages.json
 
 Formato:
 {
@@ -14,53 +14,49 @@ Formato:
 import json
 from pathlib import Path
 
-DB_PATH = Path.home() / ".installed_packages"
-
 
 class Database:
     """Gerencia o banco de dados de pacotes instalados manualmente."""
 
-    @staticmethod
-    def load():
+    def __init__(self, path=None):
+        self.path = Path(path) if path else Path.home() / ".installed_packages.json"
+
+    def load(self):
         """Retorna a lista de pacotes do arquivo.
         Se não existir ou estiver vazio/malformado, retorna lista vazia."""
-        if not DB_PATH.exists() or DB_PATH.stat().st_size == 0:
+        if not self.path.exists() or self.path.stat().st_size == 0:
             return []
         try:
-            with open(DB_PATH) as f:
+            with open(self.path) as f:
                 data = json.load(f)
             return data.get("packages", [])
         except (json.JSONDecodeError, KeyError):
             return []
 
-    @staticmethod
-    def save(packages):
+    def save(self, packages):
         """Salva a lista de pacotes no arquivo."""
         data = {"version": 1, "packages": packages}
-        with open(DB_PATH, "w") as f:
+        with open(self.path, "w") as f:
             json.dump(data, f, indent=2)
 
-    @staticmethod
-    def add(package):
+    def add(self, package):
         """Adiciona um pacote, ignorando duplicações (por nome)."""
-        packages = Database.load()
+        packages = self.load()
         for pkg in packages:
             if pkg["name"] == package["name"]:
                 return  # já existe, ignora
         packages.append(package)
-        Database.save(packages)
+        self.save(packages)
 
-    @staticmethod
-    def remove(name):
+    def remove(self, name):
         """Remove um pacote do banco pelo nome."""
-        packages = Database.load()
+        packages = self.load()
         packages = [p for p in packages if p["name"] != name]
-        Database.save(packages)
+        self.save(packages)
 
-    @staticmethod
-    def find(name):
+    def find(self, name):
         """Busca um pacote pelo nome. Retorna None se não encontrar."""
-        for pkg in Database.load():
+        for pkg in self.load():
             if pkg["name"] == name:
                 return pkg
         return None

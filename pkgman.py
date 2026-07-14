@@ -25,6 +25,11 @@ def main():
         prog="pkgman",
         description="Gerencia pacotes instalados manualmente com suporte a replay.",
     )
+    parser.add_argument(
+        "-f", "--file",
+        metavar="ARQUIVO",
+        help="Caminho do banco de dados (padrão: ~/.installed_packages.json)",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # --- install ---
@@ -61,7 +66,7 @@ def main():
 
     args = parser.parse_args()
 
-    cmds = Commands()
+    cmds = Commands(db_path=args.file)
 
     if args.command == "install":
         if args.all:
