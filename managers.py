@@ -26,14 +26,18 @@ class Manager:
                 return Manager(mgr)
         return None
 
-    def install(self, package_name):
+    def install(self, package_name, sudo=False):
         """Instala um pacote usando o gerenciador."""
         cmd = self._build_cmd("install", package_name)
+        if sudo:
+            cmd = ["sudo"] + cmd
         subprocess.run(cmd, check=True)
 
-    def remove(self, package_name):
+    def remove(self, package_name, sudo=False):
         """Remove um pacote usando o gerenciador."""
         cmd = self._build_cmd("remove", package_name)
+        if sudo:
+            cmd = ["sudo"] + cmd
         subprocess.run(cmd, check=True)
 
     def _build_cmd(self, action, package_name):

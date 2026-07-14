@@ -21,7 +21,7 @@ pkgman -f ~/meu_banco.json list            # usa banco alternativo
 ```
 pkgman.py          → entry point + argparse
 commands.py        → orquestrador (install/remove/list)
-database.py        → CRUD do ~/.installed_packages (JSON)
+database.py        → CRUD do ~/.installed_packages.json
 managers.py        → detecção + execução de apt/yum/brew
 scripts.py         → execução de curl | bash
 ```
@@ -33,6 +33,7 @@ Lê/escreve `~/.installed_packages.json` no formato:
 ```json
 {
   "version": 1,
+  "sudo": "no",
   "packages": [
     {"type": "package", "name": "git"},
     {"type": "script",  "name": "uv", "url": "https://..."}
@@ -48,8 +49,10 @@ construtor ou via flag `-f`/`--file` na CLI.
 ### managers.py
 
 - `Manager.detect()` → detecta o gerenciador disponível (brew > apt > yum)
-- `manager.install(name)` → executa `apt install -y name` (ou equivalente)
-- `manager.remove(name)` → executa `apt remove -y name` (ou equivalente)
+- `manager.install(name, sudo=False)` → executa `apt install -y name` (ou equivalente)
+- `manager.remove(name, sudo=False)` → executa `apt remove -y name` (ou equivalente)
+- Quando `sudo=True`, prefixa o comando com `sudo`
+  (ex: `["sudo", "apt", "install", "-y", "git"]`)
 
 ### scripts.py
 
@@ -60,7 +63,7 @@ construtor ou via flag `-f`/`--file` na CLI.
 Orquestra as operações. A ordem sempre é:
 1. Executa o comando no sistema
 2. Se falhar → **não altera o banco** (exceção propaga)
-3. Se OK → atualiza `~/.installed_packages`
+3. Se OK → atualiza `~/.installed_packages.json` (ou o especificado com `-f`)
 
 ### pkgman.py
 
@@ -73,6 +76,25 @@ Arquivo: `~/.installed_packages.json` (padrão) ou personalizado via `-f`/`--fil
 - Versionado para permitir evolução futura do schema
 - Arquivo vazio ou malformado → tratado como lista vazia
 - Duplicatas ignoradas por nome (case-sensitive)
+
+## Sudo
+
+O campo `"sudo"` no JSON controla se os comandos do gerenciador de pacotes
+são executados com `sudo`. Valor padrão é `"no"`; pode ser alterado
+manualmente para `"yes"`. Toda gravação no arquivo persiste o valor
+explicitamente.
+
+```json
+{
+  "version": 1,
+  "sudo": "yes",
+  "packages": [...]
+}
+```
+
+Quando `"sudo": "yes"`, os comandos executados pelo `Manager` são prefixados
+com `sudo`, tanto em `install` quanto em `remove`. Scripts instalados via
+`--url` não são afetados (executam como `curl | bash` sem sudo).
 
 ## Gerenciadores suportados
 

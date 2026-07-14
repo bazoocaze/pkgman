@@ -4,6 +4,7 @@ database.py - Leitura e escrita do arquivo ~/.installed_packages.json
 Formato:
 {
     "version": 1,
+    "sudo": "no",
     "packages": [
         {"type": "package", "name": "git"},
         {"type": "script",  "name": "uv", "url": "https://..."}
@@ -20,22 +21,26 @@ class Database:
 
     def __init__(self, path=None):
         self.path = Path(path) if path else Path.home() / ".installed_packages.json"
+        self.sudo = "no"
 
     def load(self):
         """Retorna a lista de pacotes do arquivo.
         Se não existir ou estiver vazio/malformado, retorna lista vazia."""
         if not self.path.exists() or self.path.stat().st_size == 0:
+            self.sudo = "no"
             return []
         try:
             with open(self.path) as f:
                 data = json.load(f)
+            self.sudo = data.get("sudo", "no")
             return data.get("packages", [])
         except (json.JSONDecodeError, KeyError):
+            self.sudo = "no"
             return []
 
     def save(self, packages):
         """Salva a lista de pacotes no arquivo."""
-        data = {"version": 1, "packages": packages}
+        data = {"version": 1, "sudo": self.sudo, "packages": packages}
         with open(self.path, "w") as f:
             json.dump(data, f, indent=2)
 
