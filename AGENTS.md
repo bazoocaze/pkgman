@@ -24,6 +24,7 @@ commands.py        → orchestrator (install/remove/list)
 database.py        → CRUD for ~/.installed_packages.json
 managers.py        → detection + execution of apt/yum/brew
 scripts.py         → execution of curl | bash
+tests.py           → reusable test suite (18 checks)
 ```
 
 ### database.py
@@ -106,6 +107,17 @@ on both `install` and `remove`. Scripts installed via `--url` are not affected
 Automatic detection at startup. The manager used is independent of how the
 package was originally installed — it always uses whatever is available on
 the current system (making the database portable between Linux and macOS).
+
+## Tests
+
+Run the full test suite with:
+
+```
+python3 tests.py
+```
+
+Covers database CRUD, manager command building, Commands orchestration, and
+CLI argument parsing (18 checks).
 
 ## License
 
