@@ -4,6 +4,13 @@ Declarative layer over OS package managers. Manages the list of **manually**
 installed packages (separating them from system dependencies) and allows
 full **replay** on fresh machines.
 
+## Install
+
+```
+uv tool install git+https://github.com/bazoocaze/pkgman
+pipx install git+https://github.com/bazoocaze/pkgman
+```
+
 ## Commands
 
 ```
@@ -26,6 +33,8 @@ database.py        → CRUD for ~/.installed_packages.json
 managers.py        → detection + execution of apt/yum/brew
 scripts.py         → execution of curl | bash
 tests.py           → reusable test suite (20 checks)
+pyproject.toml     → build config + entry point (pkgman = "pkgman:main")
+README.md          → install & usage docs
 ```
 
 ### database.py
@@ -72,6 +81,11 @@ Orchestrates the operations. The order is always:
 CLI with `argparse`. Subcommands: `install`, `remove`, `list`.
 
 - `list --json` → outputs the package list as JSON instead of the default text format
+
+### pyproject.toml
+
+Build config with setuptools. Defines the entry point (`pkgman = "pkgman:main"`)
+so tools like `uv tool install` and `pipx` create a `pkgman` command in PATH.
 
 ## Database
 
