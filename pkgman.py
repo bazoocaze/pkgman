@@ -16,8 +16,15 @@ Usage:
 
 import argparse
 import sys
+from importlib.metadata import version, PackageNotFoundError
 
 from commands import Commands
+
+VERSION: str | None
+try:
+    VERSION = version("pkgman")
+except PackageNotFoundError:
+    VERSION = None
 
 
 def main():
@@ -30,7 +37,12 @@ def main():
         metavar="FILE",
         help="Path to the database file (default: ~/.installed_packages.json)",
     )
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    parser.add_argument(
+        "-V", "--version",
+        action="store_true",
+        help="Show version and exit",
+    )
+    subparsers = parser.add_subparsers(dest="command")
 
     # --- install ---
     install_parser = subparsers.add_parser("install", help="Install one or more packages")
@@ -76,6 +88,15 @@ def main():
     )
 
     args = parser.parse_args()
+
+    if args.version:
+        print(VERSION or "unknown", flush=True)
+        return
+
+    if not args.command:
+        parser.print_help()
+        sys.stdout.flush()
+        sys.exit(1)
 
     cmds = Commands(db_path=args.file)
 

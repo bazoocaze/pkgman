@@ -213,10 +213,10 @@ print("=== 4. CLI tests ===")
 
 # 4a. main help
 r = subprocess.run(
-    ["python3", "pkgman.py", "-h"], capture_output=True, text=True
+    ["python3", "pkgman.py", "--help"], capture_output=True, text=True
 )
-assert r.returncode == 0
-assert "Manages manually installed packages" in r.stdout
+assert r.returncode == 0, f"stdout: {r.stdout}, stderr: {r.stderr}"
+assert "Manages manually installed packages" in r.stdout + r.stderr
 print("  OK - main help")
 
 # 4b. install help
