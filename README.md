@@ -12,6 +12,10 @@ uv tool install git+https://github.com/bazoocaze/pkgman
 
 # with pipx
 pipx install git+https://github.com/bazoocaze/pkgman
+
+# local development
+python3 pkgman.py ...             # run directly, no install needed
+uv tool install --reinstall .     # install from local checkout
 ```
 
 ## Commands
