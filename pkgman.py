@@ -47,6 +47,12 @@ def main():
         help="Install a script from a URL (name + url)",
     )
     install_parser.add_argument(
+        "--uv",
+        nargs=2,
+        metavar=("NAME", "SOURCE"),
+        help="Install a Python tool via uv tool install (name + source)",
+    )
+    install_parser.add_argument(
         "-a", "--all",
         action="store_true",
         help="Install all packages from the database (replay)",
@@ -79,6 +85,9 @@ def main():
         elif args.url:
             name, url = args.url
             cmds.install_url(name, url)
+        elif args.uv:
+            name, source = args.uv
+            cmds.install_uv(name, source)
         elif args.names:
             cmds.install(args.names)
         else:

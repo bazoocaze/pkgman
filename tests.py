@@ -139,6 +139,32 @@ except RuntimeError as e:
     assert "Unknown manager" in str(e)
     print("  OK - unknown manager raises error")
 print()
+print()
+
+# ---------------------------------------------------------------------------
+# 2.5. UvTool
+# ---------------------------------------------------------------------------
+print("=== 2.5. UvTool tests ===")
+from uv_tools import UvTool
+
+# 2f. uv install command
+cmd = UvTool._build_cmd("install", "github:astral-sh/ruff")
+assert cmd == ["uv", "tool", "install", "github:astral-sh/ruff"], f"Got {cmd}"
+print("  OK - uv install cmd")
+
+# 2g. uv remove command
+cmd = UvTool._build_cmd("remove", "ruff")
+assert cmd == ["uv", "tool", "uninstall", "ruff"], f"Got {cmd}"
+print("  OK - uv remove cmd")
+
+# 2h. Unknown uv action
+try:
+    UvTool._build_cmd("upgrade", "ruff")
+    assert False, "Should have raised"
+except RuntimeError as e:
+    assert "Unknown uv action" in str(e)
+    print("  OK - unknown uv action raises error")
+print()
 
 # ---------------------------------------------------------------------------
 # 3. Commands
@@ -172,6 +198,11 @@ cmds.db.add({"type": "package", "name": "testpkg"})
 cmds.list()
 print("  OK - list with one package")
 
+# 3e. list with uv package
+cmds.db.add({"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"})
+cmds.list()
+print("  OK - list with uv package")
+
 os.unlink(tmp2)
 print()
 
@@ -196,7 +227,16 @@ assert r.returncode == 0
 assert "Names of OS packages to install" in r.stdout
 print("  OK - install help")
 
-# 4c. remove help
+# 4c. install help (should mention --uv)
+r = subprocess.run(
+    ["python3", "pkgman.py", "install", "-h"], capture_output=True, text=True
+)
+assert r.returncode == 0
+assert "Names of OS packages to install" in r.stdout
+assert "--uv" in r.stdout
+print("  OK - install help mentions --uv")
+
+# 4d. remove help
 r = subprocess.run(
     ["python3", "pkgman.py", "remove", "-h"], capture_output=True, text=True
 )
@@ -204,14 +244,14 @@ assert r.returncode == 0
 assert "Names of packages to remove" in r.stdout
 print("  OK - remove help")
 
-# 4d. list help
+# 4e. list help
 r = subprocess.run(
     ["python3", "pkgman.py", "list", "-h"], capture_output=True, text=True
 )
 assert r.returncode == 0
 print("  OK - list help")
 
-# 4e. list with -f flag
+# 4e. list with -f flag (package + script + uv)
 with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as f:
     tmp3 = f.name
 with open(tmp3, "w") as f:
@@ -222,6 +262,7 @@ with open(tmp3, "w") as f:
             "packages": [
                 {"type": "package", "name": "git"},
                 {"type": "script", "name": "uv", "url": "https://example.com"},
+                {"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"},
             ],
         },
         f,
@@ -235,7 +276,8 @@ r = subprocess.run(
 assert r.returncode == 0
 assert "PACKAGE  git" in r.stdout
 assert "SCRIPT   uv" in r.stdout
-print("  OK - list with -f flag")
+assert "UV       ruff" in r.stdout
+print("  OK - list with -f flag (package + script + uv)")
 
 os.unlink(tmp3)
 
@@ -246,7 +288,7 @@ r = subprocess.run(
 assert r.returncode == 1
 print("  OK - install with no args exits with code 1")
 
-# 4g. list --json
+# 4g. list --json (package + script + uv)
 with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as f:
     tmp4 = f.name
 with open(tmp4, "w") as f:
@@ -257,6 +299,7 @@ with open(tmp4, "w") as f:
             "packages": [
                 {"type": "package", "name": "git"},
                 {"type": "script", "name": "uv", "url": "https://example.com"},
+                {"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"},
             ],
         },
         f,
@@ -269,12 +312,15 @@ r = subprocess.run(
 )
 assert r.returncode == 0
 data = json.loads(r.stdout)
-assert len(data) == 2
+assert len(data) == 3
 assert data[0]["name"] == "git"
 assert data[0]["type"] == "package"
 assert data[1]["name"] == "uv"
 assert data[1]["url"] == "https://example.com"
-print("  OK - list --json")
+assert data[2]["name"] == "ruff"
+assert data[2]["type"] == "uv"
+assert data[2]["source"] == "github:astral-sh/ruff"
+print("  OK - list --json (package + script + uv)")
 
 os.unlink(tmp4)
 

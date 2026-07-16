@@ -7,6 +7,7 @@ import sys
 from database import Database
 from managers import Manager
 from scripts import ScriptRunner
+from uv_tools import UvTool
 
 
 class Commands:
@@ -44,6 +45,14 @@ class Commands:
         self.db.add({"type": "script", "name": name, "url": url})
         print(f"  -> {name} installed and registered.")
 
+    def install_uv(self, name, source):
+        """Install a Python tool via uv."""
+        print(f"Installing uv tool: {name}")
+        print(f"  Source: {source}")
+        UvTool.install(source)
+        self.db.add({"type": "uv", "name": name, "source": source})
+        print(f"  -> {name} installed and registered.")
+
     def install_all(self):
         """Reinstall all packages from the database (replay)."""
         packages = self.db.load()
@@ -59,6 +68,10 @@ class Commands:
                 print(f"Installing script: {pkg['name']}")
                 print(f"  URL: {pkg['url']}")
                 ScriptRunner.run(pkg["url"])
+            elif pkg["type"] == "uv":
+                print(f"Installing uv tool: {pkg['name']}")
+                print(f"  Source: {pkg['source']}")
+                UvTool.install(pkg["source"])
         print("Replay complete.")
 
     def remove(self, names):
@@ -72,6 +85,9 @@ class Commands:
             if pkg["type"] == "package":
                 print(f"Removing package: {name}")
                 self.manager.remove(name, sudo=self._use_sudo)
+            elif pkg["type"] == "uv":
+                print(f"Removing uv tool: {name}")
+                UvTool.remove(name)
 
             self.db.remove(name)
             print(f"  -> {name} removed from database.")
@@ -94,3 +110,5 @@ class Commands:
                     print(f"PACKAGE  {pkg['name']}")
                 elif pkg["type"] == "script":
                     print(f"SCRIPT   {pkg['name']}  {pkg['url']}")
+                elif pkg["type"] == "uv":
+                    print(f"UV       {pkg['name']}  {pkg['source']}")

@@ -16,9 +16,11 @@ pipx install git+https://github.com/bazoocaze/pkgman
 ```
 pkgman install git jq                      # install OS packages
 pkgman install --url uv <url>              # install script via curl | bash
+pkgman install --uv ruff github:astral-sh/ruff  # install Python tool via uv
 pkgman install -a                          # replay: reinstall ALL from the database
 pkgman remove git                          # uninstall + remove from database
 pkgman remove uv                           # only remove from database (script)
+pkgman remove ruff                         # uninstall uv tool + remove from database
 pkgman list                                # list registered packages
 pkgman list --json                         # list as JSON
 pkgman -f ~/my_database.json list          # use an alternative database
@@ -32,7 +34,8 @@ commands.py        → orchestrator (install/remove/list)
 database.py        → CRUD for ~/.installed_packages.json
 managers.py        → detection + execution of apt/yum/brew
 scripts.py         → execution of curl | bash
-tests.py           → reusable test suite (20 checks)
+uv_tools.py        → execution of uv tool install/uninstall
+tests.py           → reusable test suite (25+ checks)
 pyproject.toml     → build config + entry point (pkgman = "pkgman:main")
 README.md          → install & usage docs
 ```
@@ -47,7 +50,8 @@ Reads/writes `~/.installed_packages.json` in the following format:
   "sudo": "no",
   "packages": [
     {"type": "package", "name": "git"},
-    {"type": "script",  "name": "uv", "url": "https://..."}
+    {"type": "script",  "name": "uv", "url": "https://..."},
+    {"type": "uv",      "name": "ruff", "source": "github:astral-sh/ruff"}
   ]
 }
 ```
@@ -68,6 +72,11 @@ or via the `-f`/`--file` CLI flag.
 ### scripts.py
 
 - `ScriptRunner.run(url)` → runs `curl -fsSL <url> | bash`
+
+### uv_tools.py
+
+- `UvTool.install(source)` → runs `uv tool install <source>`
+- `UvTool.remove(name)` → runs `uv tool uninstall <name>`
 
 ### commands.py
 
