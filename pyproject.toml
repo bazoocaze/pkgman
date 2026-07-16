@@ -15,3 +15,6 @@ pkgman = "pkgman:main"
 
 [tool.setuptools]
 py-modules = ["pkgman", "commands", "database", "managers", "scripts"]
+
+[dependency-groups]
+dev = ["pytest"]
