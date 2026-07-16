@@ -31,14 +31,22 @@ class Manager:
         cmd = self._build_cmd("install", package_name)
         if sudo:
             cmd = ["sudo"] + cmd
-        subprocess.run(cmd, check=True)
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise subprocess.CalledProcessError(
+                result.returncode, cmd, output=result.stdout, stderr=result.stderr
+            )
 
     def remove(self, package_name, sudo=False):
         """Remove a package using the manager."""
         cmd = self._build_cmd("remove", package_name)
         if sudo:
             cmd = ["sudo"] + cmd
-        subprocess.run(cmd, check=True)
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise subprocess.CalledProcessError(
+                result.returncode, cmd, output=result.stdout, stderr=result.stderr
+            )
 
     def _build_cmd(self, action, package_name):
         """Build the argument list for subprocess."""

@@ -3,11 +3,76 @@ commands.py - Orchestrates install, remove, list commands
 """
 
 import json
+import subprocess
 import sys
 from database import Database
 from managers import Manager
 from scripts import ScriptRunner
 from uv_tools import UvTool
+
+
+class _Colors:
+    if sys.stdout.isatty():
+        _ok = "\033[92m"
+        _fail = "\033[91m"
+        _snippet = "\033[93m"
+        _bold = "\033[1m"
+        _reset = "\033[0m"
+    else:
+        _ok = _fail = _snippet = _bold = _reset = ""
+
+    OK = f"{_ok}{_bold}"
+    FAIL = f"{_fail}{_bold}"
+    SNIPPET = f"{_snippet}"
+    RESET = _reset
+
+
+class _Report:
+    """Accumulates results and prints a formatted report."""
+
+    def __init__(self):
+        self.entries = []
+
+    def add_ok(self, ptype, name, detail=""):
+        self.entries.append((True, ptype, name, detail))
+
+    def add_fail(self, ptype, name, detail="", snippet=""):
+        self.entries.append((False, ptype, name, detail, snippet))
+
+    @staticmethod
+    def _snippet(stderr="", stdout="", maxlen=60):
+        text = stderr or stdout
+        if not text:
+            return ""
+        line = text.strip().split("\n")[0]
+        if len(line) > maxlen:
+            line = line[:maxlen] + "..."
+        return line
+
+    def print(self):
+        C = _Colors
+        ok_count = sum(1 for ok, *_ in self.entries if ok)
+        fail_count = len(self.entries) - ok_count
+
+        out_lines = []
+        for entry in self.entries:
+            ok = entry[0]
+            ptype, name = entry[1], entry[2]
+            detail = entry[3] if len(entry) > 3 else ""
+            snippet = entry[4] if len(entry) > 4 else ""
+            icon = f"{C.OK}✅{C.RESET}" if ok else f"{C.FAIL}❌{C.RESET}"
+            text = f"  {icon}  {ptype:<8} {name}"
+            if detail:
+                text += f"  {detail}"
+            if snippet:
+                text += f"  {C.SNIPPET}{snippet}{C.RESET}"
+            out_lines.append(text)
+
+        summary_color = C.OK if fail_count == 0 else C.FAIL
+        summary = f"{summary_color}Summary: {ok_count} succeeded, {fail_count} failed{C.RESET}"
+        out_lines.append(summary)
+
+        print("\n".join(out_lines))
 
 
 class Commands:
@@ -62,19 +127,42 @@ class Commands:
             print("No registered packages to install.")
             return
 
+        report = _Report()
+
         for pkg in packages:
-            if pkg["type"] == "package":
-                print(f"Installing package: {pkg['name']}")
-                self.manager.install(pkg["name"], sudo=self._use_sudo)
-            elif pkg["type"] == "script":
-                print(f"Installing script: {pkg['name']}")
-                print(f"  URL: {pkg['url']}")
-                ScriptRunner.run(pkg["url"])
-            elif pkg["type"] == "uv":
-                print(f"Installing uv tool: {pkg['name']}")
-                print(f"  Source: {pkg['source']}")
-                UvTool.install(pkg["source"])
-        print("Replay complete.")
+            ptype = pkg["type"]
+            name = pkg["name"]
+            if ptype == "package":
+                try:
+                    self.manager.install(name, sudo=self._use_sudo)
+                    report.add_ok("PACKAGE", name)
+                except subprocess.CalledProcessError as e:
+                    report.add_fail("PACKAGE", name, f"exit {e.returncode}",
+                                    snippet=_Report._snippet(e.stderr, e.stdout))
+                except Exception as e:
+                    report.add_fail("PACKAGE", name, str(e))
+            elif ptype == "script":
+                url = pkg.get("url", "?")
+                try:
+                    ScriptRunner.run(url)
+                    report.add_ok("SCRIPT", name, url)
+                except subprocess.CalledProcessError as e:
+                    report.add_fail("SCRIPT", name, f"exit {e.returncode}",
+                                    snippet=_Report._snippet(e.stderr, e.stdout))
+                except Exception as e:
+                    report.add_fail("SCRIPT", name, str(e))
+            elif ptype == "uv":
+                source = pkg.get("source", name)
+                try:
+                    UvTool.install(source)
+                    report.add_ok("UV", name, source)
+                except subprocess.CalledProcessError as e:
+                    report.add_fail("UV", name, f"exit {e.returncode}",
+                                    snippet=_Report._snippet(e.stderr, e.stdout))
+                except Exception as e:
+                    report.add_fail("UV", name, str(e))
+
+        report.print()
 
     def remove(self, names):
         """Remove packages by name."""

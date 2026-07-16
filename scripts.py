@@ -12,4 +12,8 @@ class ScriptRunner:
     def run(url):
         """Download and execute the script from the URL."""
         cmd = f"curl -fsSL {url} | bash"
-        subprocess.run(cmd, shell=True, check=True, executable="/bin/bash")
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash")
+        if result.returncode != 0:
+            raise subprocess.CalledProcessError(
+                result.returncode, cmd, output=result.stdout, stderr=result.stderr
+            )
