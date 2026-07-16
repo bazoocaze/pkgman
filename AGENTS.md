@@ -98,6 +98,9 @@ CLI with `argparse`. Subcommands: `install`, `remove`, `list`.
 Build config with setuptools. Defines the entry point (`pkgman = "pkgman:main"`)
 so tools like `uv tool install` and `pipx` create a `pkgman` command in PATH.
 
+**Tip:** When adding a new `.py` file at the project root, include its module name in
+`[tool.setuptools] py-modules`, otherwise `uv tool install` / `pipx` will not ship it.
+
 ## Database
 
 File: `~/.installed_packages.json` (default) or custom via `-f`/`--file`

@@ -14,7 +14,7 @@ license = {text = "MIT"}
 pkgman = "pkgman:main"
 
 [tool.setuptools]
-py-modules = ["pkgman", "commands", "database", "managers", "scripts"]
+py-modules = ["pkgman", "commands", "database", "managers", "scripts", "uv_tools"]
 
 [dependency-groups]
 dev = ["pytest"]
