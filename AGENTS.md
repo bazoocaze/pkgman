@@ -17,6 +17,7 @@ pipx install git+https://github.com/bazoocaze/pkgman
 pkgman install git jq                      # install OS packages
 pkgman install --url uv <url>              # install script via curl | bash
 pkgman install --uv ruff github:astral-sh/ruff  # install Python tool via uv
+pkgman install --uv ruff                        # same, source defaults to name
 pkgman install -a                          # replay: reinstall ALL from the database
 pkgman remove git                          # uninstall + remove from database
 pkgman remove uv                           # only remove from database (script)
@@ -35,7 +36,7 @@ database.py        → CRUD for ~/.installed_packages.json
 managers.py        → detection + execution of apt/yum/brew
 scripts.py         → execution of curl | bash
 uv_tools.py        → execution of uv tool install/uninstall
-tests.py           → reusable test suite (25+ checks)
+tests/             → pytest test suite (32 checks)
 pyproject.toml     → build config + entry point (pkgman = "pkgman:main")
 README.md          → install & usage docs
 ```
@@ -90,6 +91,7 @@ Orchestrates the operations. The order is always:
 CLI with `argparse`. Subcommands: `install`, `remove`, `list`.
 
 - `list --json` → outputs the package list as JSON instead of the default text format
+- `-V`/`--version` → shows the installed version via `importlib.metadata`
 
 ### pyproject.toml
 
@@ -139,11 +141,13 @@ the current system (making the database portable between Linux and macOS).
 Run the full test suite with:
 
 ```
-python3 tests.py
+uv run pytest tests/
+# or
+./test.sh
 ```
 
-Covers database CRUD, manager command building, Commands orchestration, and
-CLI argument parsing (20 checks).
+Covers database CRUD, manager command building, Commands orchestration, CLI
+argument parsing, and uv tool management (32 checks).
 
 ## License
 

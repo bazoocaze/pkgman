@@ -8,6 +8,8 @@ on fresh machines.
 Usage:
     pkgman install git jq
     pkgman install --url uv https://astral.sh/uv/install.sh
+    pkgman install --uv ruff
+    pkgman install --uv ruff github:astral-sh/ruff
     pkgman install -a
     pkgman remove git
     pkgman remove uv
@@ -60,9 +62,9 @@ def main():
     )
     install_parser.add_argument(
         "--uv",
-        nargs=2,
-        metavar=("NAME", "SOURCE"),
-        help="Install a Python tool via uv tool install (name + source)",
+        nargs="+",
+        metavar=("NAME", "[SOURCE]"),
+        help="Install a Python tool via uv tool install (name [source])",
     )
     install_parser.add_argument(
         "-a", "--all",
@@ -107,7 +109,8 @@ def main():
             name, url = args.url
             cmds.install_url(name, url)
         elif args.uv:
-            name, source = args.uv
+            name = args.uv[0]
+            source = args.uv[1] if len(args.uv) > 1 else name
             cmds.install_uv(name, source)
         elif args.names:
             cmds.install(args.names)

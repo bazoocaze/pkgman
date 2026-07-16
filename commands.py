@@ -45,8 +45,10 @@ class Commands:
         self.db.add({"type": "script", "name": name, "url": url})
         print(f"  -> {name} installed and registered.")
 
-    def install_uv(self, name, source):
+    def install_uv(self, name, source=None):
         """Install a Python tool via uv."""
+        if source is None:
+            source = name
         print(f"Installing uv tool: {name}")
         print(f"  Source: {source}")
         UvTool.install(source)

@@ -23,11 +23,15 @@ uv tool install --reinstall .     # install from local checkout
 ```
 pkgman install git jq                      # install OS packages
 pkgman install --url uv <url>              # install script via curl | bash
+pkgman install --uv ruff                      # install Python tool via uv (name == source)
+pkgman install --uv ruff github:astral-sh/ruff  # install Python tool via uv (explicit source)
 pkgman install -a                          # replay: reinstall ALL from the database
 pkgman remove git                          # uninstall + remove from database
 pkgman remove uv                           # only remove from database (script)
+pkgman remove ruff                         # uninstall uv tool + remove from database
 pkgman list                                # list registered packages
 pkgman list --json                         # list as JSON
+pkgman -V, --version                       # show version and exit
 pkgman -f ~/my_database.json list          # use an alternative database
 ```
 
@@ -39,7 +43,9 @@ commands.py        orchestrator (install/remove/list)
 database.py        CRUD for ~/.installed_packages.json
 managers.py        detection + execution of apt/yum/brew
 scripts.py         execution of curl | bash
-tests.py           test suite (20 checks)
+uv_tools.py        execution of uv tool install/uninstall
+tests/             pytest test suite
+pyproject.toml     build config + entry point
 ```
 
 The order of operations is always:
@@ -66,7 +72,9 @@ commands with `sudo`. Scripts installed via `--url` are not affected.
 ## Tests
 
 ```bash
-python3 tests.py
+uv run pytest tests/
+# or
+./test.sh
 ```
 
 ## License

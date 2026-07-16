@@ -29,6 +29,12 @@ def test_install_help_mentions_uv():
     assert "-uv" in r.stdout or "--uv" in r.stdout
 
 
+def test_install_uv_accepts_one_arg():
+    r = run("install", "-h")
+    assert r.returncode == 0
+    assert "[SOURCE]" in r.stdout
+
+
 def test_remove_help():
     r = run("remove", "-h")
     assert r.returncode == 0

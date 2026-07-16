@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.0] - 2026-07-16
+
+### Added
+
+- `--uv` now accepts 1 argument (name only, source defaults to name).
+  - `pkgman install --uv ruff` installs `ruff` from PyPI.
+  - `pkgman install --uv ruff github:astral-sh/ruff` still works (2 args).
+
 ## [Unreleased]
 
 ### Added
