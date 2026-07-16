@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pkgman"
+version = "0.1.0"
+description = "Declarative layer over OS package managers. Replay your manually installed packages on fresh machines."
+requires-python = ">=3.10"
+authors = [{name = "Jose"}]
+license = {text = "MIT"}
+
+[project.scripts]
+pkgman = "pkgman:main"
+
+[tool.setuptools]
+py-modules = ["pkgman", "commands", "database", "managers", "scripts"]
