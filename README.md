@@ -1,5 +1,7 @@
 # pkgman
 
+[![CI](https://github.com/bazoocaze/pkgman/actions/workflows/ci.yml/badge.svg)](https://github.com/bazoocaze/pkgman/actions/workflows/ci.yml)
+
 Declarative layer over OS package managers. Manages the list of **manually**
 installed packages (separating them from system dependencies) and allows
 full **replay** on fresh machines.
