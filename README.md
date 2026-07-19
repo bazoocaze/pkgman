@@ -23,18 +23,18 @@ uv tool install --reinstall .     # install from local checkout
 ## Commands
 
 ```
-pkgman install git jq                      # install OS packages
-pkgman install --url uv <url>              # install script via curl | bash
-pkgman install --uv ruff                      # install Python tool via uv (name == source)
-pkgman install --uv ruff github:astral-sh/ruff  # install Python tool via uv (explicit source)
-pkgman install -a                          # replay: reinstall ALL from the database
-pkgman remove git                          # uninstall + remove from database
-pkgman remove uv                           # only remove from database (script)
-pkgman remove ruff                         # uninstall uv tool + remove from database
-pkgman list                                # list registered packages
-pkgman list --json                         # list as JSON
-pkgman -V, --version                       # show version and exit
-pkgman -f ~/my_database.json list          # use an alternative database
+pkgman install git jq                                # OS packages (default @package)
+pkgman install @uv ruff                              # Python tool via uv (name == source)
+pkgman install @uv ruff github:astral-sh/ruff        # uv tool with explicit source
+pkgman install @script sdkman https://get.sdkman.io  # script from URL
+pkgman install @pi name source                       # custom manager
+pkgman install -a                                    # replay: reinstall ALL from the database
+pkgman remove git                                    # @auto: finds package by name
+pkgman remove @pi name                               # explicit manager
+pkgman list                                          # list registered packages
+pkgman list --json                                   # list as JSON
+pkgman -V, --version                                 # show version and exit
+pkgman -f ~/my_database.json list                    # use an alternative database
 ```
 
 ## How it works
@@ -43,9 +43,8 @@ pkgman -f ~/my_database.json list          # use an alternative database
 pkgman.py          entry point + argparse
 commands.py        orchestrator (install/remove/list)
 database.py        CRUD for ~/.config/.pkgman_database.json
-managers.py        detection + execution of apt/yum/brew
-scripts.py         execution of curl | bash
-uv_tools.py        execution of uv tool install/uninstall
+managers.py        Manager (detection + execution of apt/yum/brew) and
+                   ManagerRegistry + CustomManager (unified custom managers)
 tests/             pytest test suite
 pyproject.toml     build config + entry point
 ```
@@ -55,13 +54,15 @@ The order of operations is always:
 2. If it fails → database is **not** modified
 3. If OK → update `~/.config/.pkgman_database.json`
 
-The database file is portable between Linux and macOS — the manager is
+The database file is portable between Linux and macOS — the OS manager is
 detected automatically at runtime based on what's available (brew > apt > yum).
+Custom managers (defined in JSON) work identically on any platform.
 
 ## Sudo
 
-Set `"sudo": "yes"` in `~/.config/.pkgman_database.json` to prefix manager
-commands with `sudo`. Scripts installed via `--url` are not affected.
+Set `"sudo": "yes"` in `~/.config/.pkgman_database.json` to prefix `@package`
+commands with `sudo`. Custom managers are **not** affected by the sudo setting
+(they run as logged in the JSON command definition).
 
 ## Supported managers
 
@@ -71,6 +72,61 @@ commands with `sudo`. Scripts installed via `--url` are not affected.
 | apt  | `which apt`  | `apt install -y` | `apt remove -y` |
 | yum  | `which yum`  | `yum install -y` | `yum remove -y` |
 
+## Database
+
+The database is stored at `~/.config/.pkgman_database.json` (default) or a
+custom path specified with `-f`/`--file`.
+
+### Schema (v2)
+
+```json
+{
+  "version": 2,
+  "sudo": "no",
+  "managers": {
+    "uv": {
+      "install": ["uv", "tool", "install", "{source}"],
+      "remove": ["uv", "tool", "uninstall", "{name}"]
+    },
+    "script": {
+      "install": "curl -fsSL {source} | bash",
+      "remove": null
+    },
+    "pi": {
+      "install": ["pi", "install", "{source}"],
+      "remove": ["pi", "remote", "{name}"]
+    }
+  },
+  "packages": [
+    {"type": "package", "name": "git"},
+    {"type": "pi", "name": "pi-subagents", "source": "npm:@tintinweb/pi-subagents"},
+    {"type": "script", "name": "sdkman", "source": "https://get.sdkman.io"},
+    {"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"}
+  ]
+}
+```
+
+### Custom managers
+
+Each entry in `managers` defines:
+
+- `install`: a shell string (with `shell=True`) or a list of arguments for `subprocess`.
+  Placeholders `{name}` and `{source}` are substituted at runtime.
+- `remove`: a string, a list, or `null`. If `null`, removal is database-only.
+
+Built-in default managers (`uv`, `script`) are injected automatically on first
+load or v1 migration. Once a manager key exists in the JSON, it is **never
+overwritten** by pkgman — the user can freely edit or extend them. Adding a new
+custom manager is as simple as adding a new key to the `managers` dictionary.
+
+### Behavior details
+
+- Empty or malformed file → treated as an empty list with default managers.
+- Duplicates are ignored by name (case-sensitive).
+- For custom managers, if `source` matches `name`, the `source` field may be
+  omitted from the JSON (it is inferred as `source = name`).
+- Reserved names (`package`, `auto`) cannot be used as custom manager keys.
+
 ## Tests
 
 ```bash
@@ -78,6 +134,9 @@ uv run pytest tests/
 # or
 ./test.sh
 ```
+
+Covers database CRUD, manager command building, Commands orchestration, CLI
+argument parsing, and custom manager execution (69+ checks).
 
 ## License
 

@@ -7,12 +7,12 @@ on fresh machines.
 
 Usage:
     pkgman install git jq
-    pkgman install --url uv https://astral.sh/uv/install.sh
-    pkgman install --uv ruff
-    pkgman install --uv ruff github:astral-sh/ruff
+    pkgman install @uv ruff
+    pkgman install @uv ruff github:astral-sh/ruff
+    pkgman install @script sdkman https://get.sdkman.io
     pkgman install -a
     pkgman remove git
-    pkgman remove uv
+    pkgman remove @pi pi-subagents
     pkgman list
 """
 
@@ -22,11 +22,48 @@ from importlib.metadata import version, PackageNotFoundError
 
 from commands import Commands
 
+
 VERSION: str | None
 try:
     VERSION = version("pkgman")
 except PackageNotFoundError:
     VERSION = None
+
+
+def _parse_install_args(args):
+    """Return (manager, names_or_name, source_or_None)."""
+    if args[0].startswith("@"):
+        manager = args[0][1:]
+        rest = args[1:]
+    else:
+        manager = "package"
+        rest = args
+
+    if manager == "package":
+        # Multiple names allowed
+        return manager, rest, None
+
+    if len(rest) == 1:
+        # name = source
+        return manager, rest[0], rest[0]
+    elif len(rest) == 2:
+        return manager, rest[0], rest[1]
+    else:
+        print("Error: Too many arguments for non-package manager", file=sys.stderr)
+        sys.exit(1)
+
+
+def _parse_remove_args(args):
+    """Return (manager, name)."""
+    if args[0].startswith("@"):
+        manager = args[0][1:]
+        name = args[1] if len(args) > 1 else None
+        if name is None:
+            print("Error: Missing package name", file=sys.stderr)
+            sys.exit(1)
+        return manager, name
+    else:
+        return "auto", args[0]
 
 
 def main():
@@ -49,22 +86,11 @@ def main():
     # --- install ---
     install_parser = subparsers.add_parser("install", help="Install one or more packages")
     install_parser.add_argument(
-        "names",
+        "args",
         nargs="*",
-        metavar="PACKAGE",
-        help="Names of OS packages to install",
-    )
-    install_parser.add_argument(
-        "--url",
-        nargs=2,
-        metavar=("NAME", "URL"),
-        help="Install a script from a URL (name + url)",
-    )
-    install_parser.add_argument(
-        "--uv",
-        nargs="+",
-        metavar=("NAME", "[SOURCE]"),
-        help="Install a Python tool via uv tool install (name [source])",
+        metavar="[@MANAGER] NAME [SOURCE]",
+        help="Package to install. Default manager is @package (OS packages). "
+             "Use @manager prefix for custom managers (e.g. @uv, @script).",
     )
     install_parser.add_argument(
         "-a", "--all",
@@ -73,12 +99,13 @@ def main():
     )
 
     # --- remove ---
-    remove_parser = subparsers.add_parser("remove", help="Remove one or more packages")
+    remove_parser = subparsers.add_parser("remove", help="Remove a package")
     remove_parser.add_argument(
-        "names",
+        "args",
         nargs="+",
-        metavar="PACKAGE",
-        help="Names of packages to remove",
+        metavar="[@MANAGER] NAME",
+        help="Package to remove. Default manager is @auto (searches DB by name). "
+             "Use @manager prefix to remove from a specific manager.",
     )
 
     # --- list ---
@@ -105,20 +132,18 @@ def main():
     if args.command == "install":
         if args.all:
             cmds.install_all()
-        elif args.url:
-            name, url = args.url
-            cmds.install_url(name, url)
-        elif args.uv:
-            name = args.uv[0]
-            source = args.uv[1] if len(args.uv) > 1 else name
-            cmds.install_uv(name, source)
-        elif args.names:
-            cmds.install(args.names)
+        elif args.args:
+            manager, names_or_name, source = _parse_install_args(args.args)
+            if manager == "package":
+                cmds.install(manager, names_or_name)  # names_or_name is a list
+            else:
+                cmds.install(manager, names_or_name, source)
         else:
             install_parser.print_help()
             sys.exit(1)
     elif args.command == "remove":
-        cmds.remove(args.names)
+        manager, name = _parse_remove_args(args.args)
+        cmds.remove(manager, name)
     elif args.command == "list":
         cmds.list(json_output=args.json)
 

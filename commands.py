@@ -6,9 +6,7 @@ import json
 import subprocess
 import sys
 from database import Database
-from managers import Manager
-from scripts import ScriptRunner
-from uv_tools import UvTool
+from managers import ManagerRegistry
 
 
 class _Colors:
@@ -81,44 +79,38 @@ class Commands:
     def __init__(self, db_path=None):
         self.db = Database(db_path)
         self.db.load()  # loads the sudo flag (if file exists)
-        self.manager = Manager.detect()
-        if self.manager is None:
-            print(
-                "Error: No supported package manager found.\n"
-                "  Need: apt, yum or brew.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+        self.registry = ManagerRegistry(self.db)
 
     @property
     def _use_sudo(self):
         return self.db.sudo == "yes"
 
-    def install(self, names):
-        """Install OS packages by name."""
-        for name in names:
-            print(f"Installing package: {name}")
-            self.manager.install(name, sudo=self._use_sudo)
-            self.db.add({"type": "package", "name": name})
+    def install(self, manager, name_or_names, source=None):
+        """Install packages by manager type.
+
+        For "package", name_or_names is a list and each is installed via the OS manager.
+        For other managers, name_or_names is a single name.
+        If source is not provided, source defaults to name.
+        """
+        if manager == "package":
+            for name in name_or_names:
+                print(f"Installing package: {name}")
+                self.registry.install("package", name, name, self._use_sudo)
+                self.db.add({"type": "package", "name": name})
+                print(f"  -> {name} installed and registered.")
+        else:
+            name = name_or_names
+            if source is None:
+                source = name
+            print(f"Installing {manager} package: {name}")
+            if source != name:
+                print(f"  Source: {source}")
+            self.registry.install(manager, name, source, sudo=False)
+            pkg_entry = {"type": manager, "name": name}
+            if source != name:
+                pkg_entry["source"] = source
+            self.db.add(pkg_entry)
             print(f"  -> {name} installed and registered.")
-
-    def install_url(self, name, url):
-        """Install a script from a URL."""
-        print(f"Installing script: {name}")
-        print(f"  URL: {url}")
-        ScriptRunner.run(url)
-        self.db.add({"type": "script", "name": name, "url": url})
-        print(f"  -> {name} installed and registered.")
-
-    def install_uv(self, name, source=None):
-        """Install a Python tool via uv."""
-        if source is None:
-            source = name
-        print(f"Installing uv tool: {name}")
-        print(f"  Source: {source}")
-        UvTool.install(source)
-        self.db.add({"type": "uv", "name": name, "source": source})
-        print(f"  -> {name} installed and registered.")
 
     def install_all(self):
         """Reinstall all packages from the database (replay)."""
@@ -132,55 +124,43 @@ class Commands:
         for pkg in packages:
             ptype = pkg["type"]
             name = pkg["name"]
-            if ptype == "package":
-                try:
-                    self.manager.install(name, sudo=self._use_sudo)
-                    report.add_ok("PACKAGE", name)
-                except subprocess.CalledProcessError as e:
-                    report.add_fail("PACKAGE", name, f"exit {e.returncode}",
-                                    snippet=_Report._snippet(e.stderr, e.stdout))
-                except Exception as e:
-                    report.add_fail("PACKAGE", name, str(e))
-            elif ptype == "script":
-                url = pkg.get("url", "?")
-                try:
-                    ScriptRunner.run(url)
-                    report.add_ok("SCRIPT", name, url)
-                except subprocess.CalledProcessError as e:
-                    report.add_fail("SCRIPT", name, f"exit {e.returncode}",
-                                    snippet=_Report._snippet(e.stderr, e.stdout))
-                except Exception as e:
-                    report.add_fail("SCRIPT", name, str(e))
-            elif ptype == "uv":
-                source = pkg.get("source", name)
-                try:
-                    UvTool.install(source)
-                    report.add_ok("UV", name, source)
-                except subprocess.CalledProcessError as e:
-                    report.add_fail("UV", name, f"exit {e.returncode}",
-                                    snippet=_Report._snippet(e.stderr, e.stdout))
-                except Exception as e:
-                    report.add_fail("UV", name, str(e))
+            source = pkg.get("source", name)
+            try:
+                sudo = self._use_sudo if ptype == "package" else False
+                self.registry.install(ptype, name, source, sudo=sudo)
+                report.add_ok(ptype.upper(), name, source)
+            except subprocess.CalledProcessError as e:
+                report.add_fail(ptype.upper(), name, f"exit {e.returncode}",
+                                snippet=_Report._snippet(e.stderr, e.stdout))
+            except Exception as e:
+                report.add_fail(ptype.upper(), name, str(e))
 
         report.print()
 
-    def remove(self, names):
-        """Remove packages by name."""
-        for name in names:
+    def remove(self, manager, name):
+        """Remove a package by name.
+
+        If manager is "auto" (or None), resolves the manager automatically
+        by searching the database by name, then by source.
+        """
+        if manager == "auto" or manager is None:
+            result = self.registry.resolve_auto(name)
+            if result is None:
+                print(f"Warning: '{name}' not found in database. Skipping.")
+                return
+            manager, pkg = result
+        else:
             pkg = self.db.find(name)
             if pkg is None:
                 print(f"Warning: '{name}' not found in database. Skipping.")
-                continue
+                return
 
-            if pkg["type"] == "package":
-                print(f"Removing package: {name}")
-                self.manager.remove(name, sudo=self._use_sudo)
-            elif pkg["type"] == "uv":
-                print(f"Removing uv tool: {name}")
-                UvTool.remove(name)
-
-            self.db.remove(name)
-            print(f"  -> {name} removed from database.")
+        print(f"Removing {manager} package: {name}")
+        source = pkg.get("source", name)
+        sudo = self._use_sudo if manager == "package" else False
+        self.registry.remove(manager, name, source, sudo=sudo)
+        self.db.remove(name)
+        print(f"  -> {name} removed from database.")
 
     def list(self, json_output=False):
         """List all registered packages."""
@@ -196,9 +176,12 @@ class Commands:
             print(json.dumps(packages, indent=2))
         else:
             for pkg in packages:
-                if pkg["type"] == "package":
-                    print(f"PACKAGE  {pkg['name']}")
-                elif pkg["type"] == "script":
-                    print(f"SCRIPT   {pkg['name']}  {pkg['url']}")
-                elif pkg["type"] == "uv":
-                    print(f"UV       {pkg['name']}  {pkg['source']}")
+                ptype = pkg["type"]
+                name = pkg["name"]
+                source = pkg.get("source", "")
+                if ptype == "package":
+                    print(f"PACKAGE  {name}")
+                elif source:
+                    print(f"{ptype.upper():8} {name}  {source}")
+                else:
+                    print(f"{ptype.upper():8} {name}")
