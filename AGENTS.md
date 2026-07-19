@@ -166,7 +166,10 @@ argument parsing, and custom manager execution (69+ checks).
 
 ## Release
 
-When user asks "make release", you should bump version, savel all files, commit and push. Use SemVer.
+When user asks "make release", you should bump version, save all files, commit and push.
+Use SemVer.
+
+Commit messages must be concise and in English.
 
 ## License
 
