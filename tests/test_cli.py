@@ -183,3 +183,45 @@ def test_list_json_empty(db_path):
     r = run("-f", db_path, "list", "--json")
     assert r.returncode == 0
     assert json.loads(r.stdout) == []
+
+
+def test_configure_help():
+    r = run("configure", "-h")
+    assert r.returncode == 0
+    assert "-y" in r.stdout
+    assert "Add all detected managers" in r.stdout
+
+
+def test_configure_yes_flag(db_path):
+    """configure -y succeeds and adds pi manager."""
+    data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    r = run("-f", db_path, "configure", "-y")
+    assert r.returncode == 0
+    assert "1 manager(s) added" in r.stdout
+    # Verify persisted
+    with open(db_path) as f:
+        saved = json.load(f)
+    assert "pi" in saved["managers"]
+
+
+def test_configure_already_registered(db_path):
+    """configure prints skip when manager already in DB."""
+    data = {
+        "version": 2,
+        "sudo": "no",
+        "managers": {
+            "pi": {
+                "install": ["pi", "install", "{source}"],
+                "remove": ["pi", "remove", "{name}"],
+            },
+        },
+        "packages": [],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    r = run("-f", db_path, "configure", "-y")
+    assert r.returncode == 0
+    assert "already registered" in r.stdout
+    assert "No new managers found" in r.stdout

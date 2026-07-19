@@ -30,5 +30,15 @@ DEFAULT_MANAGERS: dict[str, dict[str, list[str] | str | None]] = {
     },
 }
 
+# Known managers that "configure" can detect and offer to add.
+# Maps manager name → (executable to check via which, install_cmd, remove_cmd).
+KNOWN_MANAGERS: dict[str, tuple[str, list[str] | str, list[str] | str | None]] = {
+    "pi": (
+        "pi",
+        ["pi", "install", "{source}"],
+        ["pi", "remove", "{source}"],
+    ),
+}
+
 # Current database schema version
 DB_VERSION = 2

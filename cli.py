@@ -91,6 +91,13 @@ def build_parser() -> argparse.ArgumentParser:
     list_parser = subparsers.add_parser("list", help="List registered packages")
     list_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
+    # configure
+    configure_parser = subparsers.add_parser("configure", help="Detect and add known managers")
+    configure_parser.add_argument(
+        "-y", "--yes", action="store_true",
+        help="Add all detected managers without prompting",
+    )
+
     return parser
 
 
@@ -124,10 +131,15 @@ def _handle_list(cmds: Commands, args: argparse.Namespace) -> None:
     cmds.list(json_output=args.json)
 
 
+def _handle_configure(cmds: Commands, args: argparse.Namespace) -> None:
+    cmds.configure(yes=args.yes)
+
+
 # -- dispatch mapping ----------------------------------------------------
 
 COMMAND_DISPATCH: dict[str, callable] = {
     "install": _handle_install,
     "remove": _handle_remove,
     "list": _handle_list,
+    "configure": _handle_configure,
 }
