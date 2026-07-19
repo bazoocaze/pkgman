@@ -32,7 +32,7 @@ pkgman -f ~/my_database.json list          # use an alternative database
 ```
 pkgman.py          → entry point + argparse
 commands.py        → orchestrator (install/remove/list)
-database.py        → CRUD for ~/.installed_packages.json
+database.py        → CRUD for ~/.config/.pkgman_database.json
 managers.py        → detection + execution of apt/yum/brew
 scripts.py         → execution of curl | bash
 uv_tools.py        → execution of uv tool install/uninstall
@@ -43,7 +43,7 @@ README.md          → install & usage docs
 
 ### database.py
 
-Reads/writes `~/.installed_packages.json` in the following format:
+Reads/writes `~/.config/.pkgman_database.json` in the following format:
 
 ```json
 {
@@ -84,7 +84,7 @@ or via the `-f`/`--file` CLI flag.
 Orchestrates the operations. The order is always:
 1. Execute the command on the system
 2. If it fails → **does not change the database** (exception propagates)
-3. If OK → updates `~/.installed_packages.json` (or the one specified with `-f`)
+3. If OK → updates `~/.config/.pkgman_database.json` (or the one specified with `-f`)
 
 ### pkgman.py
 
@@ -103,7 +103,7 @@ so tools like `uv tool install` and `pipx` create a `pkgman` command in PATH.
 
 ## Database
 
-File: `~/.installed_packages.json` (default) or custom via `-f`/`--file`
+File: `~/.config/.pkgman_database.json` (default) or custom via `-f`/`--file`
 
 - Versioned to allow future schema evolution
 - Empty or malformed file → treated as an empty list
@@ -151,6 +151,10 @@ uv run pytest tests/
 
 Covers database CRUD, manager command building, Commands orchestration, CLI
 argument parsing, and uv tool management (32 checks).
+
+## Release
+
+When user asks "make release", you should bump version, savel all files, commit and push. Use SemVer.
 
 ## License
 

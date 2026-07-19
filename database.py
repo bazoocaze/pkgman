@@ -1,5 +1,5 @@
 """
-database.py - Read and write ~/.installed_packages.json
+database.py - Read and write ~/.config/.pkgman_database.json
 
 Format:
 {
@@ -20,7 +20,7 @@ class Database:
     """Manages the database of manually installed packages."""
 
     def __init__(self, path=None):
-        self.path = Path(path) if path else Path.home() / ".installed_packages.json"
+        self.path = Path(path) if path else Path.home() / ".config" / ".pkgman_database.json"
         self.sudo = "no"
 
     def load(self):
@@ -40,6 +40,7 @@ class Database:
 
     def save(self, packages):
         """Save the list of packages to the file."""
+        self.path.parent.mkdir(parents=True, exist_ok=True)
         data = {"version": 1, "sudo": self.sudo, "packages": packages}
         with open(self.path, "w") as f:
             json.dump(data, f, indent=2)

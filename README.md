@@ -40,7 +40,7 @@ pkgman -f ~/my_database.json list          # use an alternative database
 ```
 pkgman.py          entry point + argparse
 commands.py        orchestrator (install/remove/list)
-database.py        CRUD for ~/.installed_packages.json
+database.py        CRUD for ~/.config/.pkgman_database.json
 managers.py        detection + execution of apt/yum/brew
 scripts.py         execution of curl | bash
 uv_tools.py        execution of uv tool install/uninstall
@@ -51,14 +51,14 @@ pyproject.toml     build config + entry point
 The order of operations is always:
 1. Execute the command on the system
 2. If it fails → database is **not** modified
-3. If OK → update `~/.installed_packages.json`
+3. If OK → update `~/.config/.pkgman_database.json`
 
 The database file is portable between Linux and macOS — the manager is
 detected automatically at runtime based on what's available (brew > apt > yum).
 
 ## Sudo
 
-Set `"sudo": "yes"` in `~/.installed_packages.json` to prefix manager
+Set `"sudo": "yes"` in `~/.config/.pkgman_database.json` to prefix manager
 commands with `sudo`. Scripts installed via `--url` are not affected.
 
 ## Supported managers

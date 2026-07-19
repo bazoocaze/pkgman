@@ -37,7 +37,7 @@ def main():
     parser.add_argument(
         "-f", "--file",
         metavar="FILE",
-        help="Path to the database file (default: ~/.installed_packages.json)",
+        help="Path to the database file (default: ~/.config/.pkgman_database.json)",
     )
     parser.add_argument(
         "-V", "--version",
