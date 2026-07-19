@@ -13,8 +13,8 @@ def test_commands_init_sudo_no(db_path):
     with open(db_path, "w") as f:
         json.dump(data, f)
     cmds = Commands(db_path=db_path)
-    assert cmds.db.sudo == "no"
-    assert cmds._use_sudo is False
+    assert cmds.store.sudo == "no"
+    assert cmds._sudo is False
 
 
 def test_use_sudo_property(db_path):
@@ -22,9 +22,9 @@ def test_use_sudo_property(db_path):
     with open(db_path, "w") as f:
         json.dump(data, f)
     cmds = Commands(db_path=db_path)
-    assert cmds._use_sudo is True
-    cmds.db.sudo = "no"
-    assert cmds._use_sudo is False
+    assert cmds._sudo is True
+    cmds.store.sudo = "no"
+    assert cmds._sudo is False
 
 
 def test_list_no_packages(db_path, capsys):
@@ -229,7 +229,7 @@ def test_install_custom_manager_source_saved(db_path, capsys):
     assert "ruff installed and registered" in captured.out
     assert "Source: github:astral-sh/ruff" in captured.out
     # Verify source was saved in the database
-    pkg = cmds.db.find("ruff")
+    pkg = cmds.store.find("ruff")
     assert pkg is not None
     assert pkg["source"] == "github:astral-sh/ruff"
 
