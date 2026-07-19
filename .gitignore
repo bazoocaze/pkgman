@@ -13,3 +13,4 @@ __pycache__/
 build/
 *.egg-info/
 dist/
+.cptr

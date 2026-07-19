@@ -41,8 +41,9 @@ constants.py       → enums (ManagerType, SudoSetting), DB_VERSION, DEFAULT_MAN
                      KNOWN_MANAGERS, RESERVED_MANAGERS
 cli.py             → argparse setup + handler dispatch (COMMAND_DISPATCH)
 output.py          → console formatting (Report, format_package_list, _snippet)
+ui.py              → interactive UI helpers (prompt_checkbox, print_manager_summary)
 runner.py          → ProcessRunner protocol + SubprocessRunner (subprocess.run wrapper)
-tests/             → pytest test suite (84+ checks)
+tests/             → pytest test suite (89 tests)
 pyproject.toml     → build config + entry point (pkgman = "pkgman:main")
 ```
 
@@ -137,6 +138,15 @@ Report()
 format_package_list(packages: list[dict], *, json_output: bool = False) -> str
 ```
 
+### ui.py
+```
+prompt_checkbox(candidates: list[tuple[str, str, list|str, list|str|None]]) -> list
+print_manager_summary(managers: dict) -> None
+```
+
+- `prompt_checkbox` — interactive numbered selection prompt for configure
+- `print_manager_summary` — prints registered custom managers with install/remove icons
+
 ### cli.py
 ```
 build_parser() -> ArgumentParser
@@ -201,6 +211,11 @@ File: `~/.config/.pkgman_database.json` (default) or custom via `-f`/`--file`
 - Duplicate packages ignored by name (case-sensitive)
 - Empty or malformed file → treated as empty
 - `"sudo"` field controls `@package` commands only; custom managers are unaffected
+
+## Keeping this file up to date
+
+If you make changes that affect the architecture, API surface, or conventions
+documented here, update the relevant sections — use judgment or ask the user.
 
 ## Release
 
