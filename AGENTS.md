@@ -221,6 +221,10 @@ documented here, update the relevant sections — use judgment or ask the user.
 
 When asked "make release": bump version in `pyproject.toml` using SemVer, commit all changes, push.
 
+- **patch** (1.0.0 → 1.0.1): bugfixes, refactors, docs, tests — no new user-facing behavior
+- **minor** (1.0.0 → 1.1.0): new feature, new subcommand, public API addition
+- **major** (1.0.0 → 2.0.0): breaking changes
+
 Commit messages concise and in English.
 
 ## License
