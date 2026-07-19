@@ -2,7 +2,7 @@
 constants.py – shared constants and enumerations.
 """
 
-from enum import StrEnum, auto
+from enum import StrEnum
 
 
 class ManagerType(StrEnum):
@@ -19,7 +19,7 @@ class SudoSetting(StrEnum):
 RESERVED_MANAGERS = frozenset({ManagerType.PACKAGE, ManagerType.AUTO})
 
 # Default custom managers bundled with pkgman
-DEFAULT_MANAGERS: dict = {
+DEFAULT_MANAGERS: dict[str, dict[str, list[str] | str | None]] = {
     "uv": {
         "install": ["uv", "tool", "install", "{source}"],
         "remove": ["uv", "tool", "uninstall", "{name}"],

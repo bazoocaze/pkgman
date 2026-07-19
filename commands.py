@@ -4,25 +4,29 @@ commands.py – orchestrates install, remove, and list commands.
 
 from __future__ import annotations
 
-import json
 import subprocess
 from pathlib import Path
 
+from constants import ManagerType, SudoSetting
 from database import Database, PackageStore
 from managers import ManagerRegistry
-from output import Report
-from constants import ManagerType, SudoSetting
+from output import Report, _snippet, format_package_list
+from runner import ProcessRunner, SubprocessRunner
 
 
 class Commands:
     """Orchestrates the execution of CLI commands."""
 
-    def __init__(self, db_path: str | Path | None = None) -> None:
+    def __init__(
+        self,
+        db_path: str | Path | None = None,
+        *,
+        runner: ProcessRunner | None = None,
+    ) -> None:
         self._db = Database(db_path)
         self.store = PackageStore(self._db)
         self.store.load()               # prime cache + migrate if needed
-        self.store.validate_managers()  # reject reserved names early
-        self.registry = ManagerRegistry(self.store)
+        self.registry = ManagerRegistry(self.store, runner=runner or SubprocessRunner())
 
     # -- helpers ---------------------------------------------------------
 
@@ -48,24 +52,19 @@ class Commands:
         the OS manager.  For custom managers it is a single name.
         """
         if manager == ManagerType.PACKAGE and isinstance(name_or_names, list):
-            self._install_packages(name_or_names)
+            for name in name_or_names:
+                self._install_single(manager, name, name)
         else:
             name = name_or_names if isinstance(name_or_names, str) else name_or_names[0]
-            self._install_custom(manager, name, source)
+            self._install_single(manager, name, source)
 
-    def _install_packages(self, names: list[str]) -> None:
-        for name in names:
-            print(f"Installing package: {name}")
-            self.registry.install(ManagerType.PACKAGE, name, name, sudo=self._sudo)
-            self.store.add({"type": ManagerType.PACKAGE, "name": name})
-            print(f"  -> {name} installed and registered.")
-
-    def _install_custom(self, manager: str, name: str, source: str | None) -> None:
+    def _install_single(self, manager: str, name: str, source: str | None) -> None:
         source = source or name
         print(f"Installing {manager} package: {name}")
+        sudo = self._sudo_for(manager)
         if source != name:
             print(f"  Source: {source}")
-        self.registry.install(manager, name, source, sudo=False)
+        self.registry.install(manager, name, source, sudo=sudo)
         entry: dict = {"type": manager, "name": name}
         if source != name:
             entry["source"] = source
@@ -94,9 +93,11 @@ class Commands:
                 report.add_fail(
                     ptype.upper(), name,
                     detail=f"exit {e.returncode}",
-                    snippet=Report._snippet(stderr=e.stderr, stdout=e.stdout),
+                    snippet=_snippet(stderr=e.stderr, stdout=e.stdout),
                 )
             except Exception as e:
+                if isinstance(e, KeyboardInterrupt):
+                    raise
                 report.add_fail(ptype.upper(), name, detail=str(e))
 
         report.print()
@@ -133,21 +134,4 @@ class Commands:
     def list(self, *, json_output: bool = False) -> None:
         """List all registered packages."""
         packages = self.store.packages
-        if not packages:
-            print("[]" if json_output else "No registered packages.")
-            return
-
-        if json_output:
-            print(json.dumps(packages, indent=2))
-            return
-
-        for pkg in packages:
-            ptype = pkg["type"]
-            name = pkg["name"]
-            source = pkg.get("source", "")
-            if ptype == ManagerType.PACKAGE:
-                print(f"PACKAGE  {name}")
-            elif source:
-                print(f"{ptype.upper():8} {name}  {source}")
-            else:
-                print(f"{ptype.upper():8} {name}")
+        print(format_package_list(packages, json_output=json_output))

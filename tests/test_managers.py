@@ -2,10 +2,11 @@
 
 import json
 import subprocess
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import pytest
-from managers import Manager, CustomManager, ManagerRegistry
+from managers import Manager, CustomManager, ManagerRegistry, _substitute
+from runner import ProcessRunner
 from database import Database, PackageStore
 
 
@@ -66,7 +67,7 @@ class TestManager:
 
     def test_unknown_manager_raises(self):
         m = Manager("nope")
-        with pytest.raises(RuntimeError, match="Unknown manager"):
+        with pytest.raises(ValueError, match="Unknown manager"):
             m._build_cmd("install", "x")
 
 
@@ -124,25 +125,25 @@ class TestManagerRegistry:
 
 class TestSubstitute:
     def test_list(self):
-        result = ManagerRegistry._substitute(
+        result = _substitute(
             ["pi", "install", "{source}"], "pi-subagents", "npm:@tintinweb/pi-subagents"
         )
         assert result == ["pi", "install", "npm:@tintinweb/pi-subagents"]
 
     def test_string(self):
-        result = ManagerRegistry._substitute(
+        result = _substitute(
             "curl -fsSL {source} | bash", "sdkman", "https://get.sdkman.io"
         )
         assert result == "curl -fsSL https://get.sdkman.io | bash"
 
     def test_name_placeholder(self):
-        result = ManagerRegistry._substitute(
+        result = _substitute(
             ["uv", "tool", "uninstall", "{name}"], "ruff", "github:astral-sh/ruff"
         )
         assert result == ["uv", "tool", "uninstall", "ruff"]
 
     def test_none(self):
-        assert ManagerRegistry._substitute(None, "x", "y") is None
+        assert _substitute(None, "x", "y") is None
 
 
 # =========================================================================
@@ -184,30 +185,37 @@ class TestResolveAuto:
 # =========================================================================
 
 class TestCustomManagerExecution:
-    @patch("managers.ManagerRegistry._run_command")
-    def test_registry_install_custom(self, mock_run_cmd):
-        store = _make_store(managers={
-            "uv": {"install": ["uv", "tool", "install", "{source}"],
-                   "remove": ["uv", "tool", "uninstall", "{name}"]},
-        })
-        reg = ManagerRegistry(store)
-        reg.install("uv", "ruff", "github:astral-sh/ruff")
-        mock_run_cmd.assert_called_once_with(["uv", "tool", "install", "github:astral-sh/ruff"])
+    def _make_mock_runner(self):
+        """Return a ProcessRunner mock and a registry wired to it."""
+        mock_runner = MagicMock(spec=ProcessRunner)
+        return mock_runner
 
-    @patch("managers.ManagerRegistry._run_command")
-    def test_registry_remove_custom(self, mock_run_cmd):
+    def test_registry_install_custom(self):
+        mock_runner = self._make_mock_runner()
         store = _make_store(managers={
             "uv": {"install": ["uv", "tool", "install", "{source}"],
                    "remove": ["uv", "tool", "uninstall", "{name}"]},
         })
-        reg = ManagerRegistry(store)
+        reg = ManagerRegistry(store, runner=mock_runner)
+        reg.install("uv", "ruff", "github:astral-sh/ruff")
+        mock_runner.run.assert_called_once_with(["uv", "tool", "install", "github:astral-sh/ruff"], shell=False)
+
+    def test_registry_remove_custom(self):
+        mock_runner = self._make_mock_runner()
+        store = _make_store(managers={
+            "uv": {"install": ["uv", "tool", "install", "{source}"],
+                   "remove": ["uv", "tool", "uninstall", "{name}"]},
+        })
+        reg = ManagerRegistry(store, runner=mock_runner)
         reg.remove("uv", "ruff", "github:astral-sh/ruff")
-        mock_run_cmd.assert_called_once_with(["uv", "tool", "uninstall", "ruff"])
+        mock_runner.run.assert_called_once_with(["uv", "tool", "uninstall", "ruff"], shell=False)
 
     def test_registry_remove_null_cmd_is_db_only(self):
+        mock_runner = self._make_mock_runner()
         store = _make_store(managers={
             "script": {"install": "curl {source}", "remove": None},
         })
-        reg = ManagerRegistry(store)
+        reg = ManagerRegistry(store, runner=mock_runner)
         # Should not raise – null remove_cmd means DB-only removal
         reg.remove("script", "sdkman", "https://get.sdkman.io")
+        mock_runner.run.assert_not_called()

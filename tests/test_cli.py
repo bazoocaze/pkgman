@@ -1,6 +1,9 @@
 import json
+import os
 import subprocess
 import tempfile
+
+import pytest
 
 
 def run(*args):
@@ -9,6 +12,9 @@ def run(*args):
         capture_output=True,
         text=True,
     )
+
+
+# -- help / usage (pure parsing, always safe) --
 
 
 def test_main_help():
@@ -50,39 +56,59 @@ def test_install_no_args_exits_nonzero():
     assert r.returncode != 0
 
 
+# -- integration tests (may execute real commands) --
+
+integration = pytest.mark.skipif(
+    os.environ.get("PKGMAN_TEST_INTEGRATION") != "1",
+    reason="set PKGMAN_TEST_INTEGRATION=1 to run integration tests (may need sudo)",
+)
+
+
+@integration
 def test_install_git_works(db_path):
-    """pkgman install git -> @package implicit, works with -f."""
+    """pkgman install git -> @package implicit, parsing works with -f."""
     data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
     with open(db_path, "w") as f:
         json.dump(data, f)
-    # This will fail to actually install (no apt), but we just test parsing
-    # The important thing is it doesn't fail with argparse error
+    # Uses a custom DB without sudo — parsing should succeed even though
+    # the actual install may fail because there's no OS package manager.
     r = run("-f", db_path, "install", "git")
-    # It will fail at runtime because no package manager, but not at CLI parsing
-    assert r.returncode != 2  # not an argparse error
-
-
-def test_install_at_uv_ruff_parses(db_path):
-    """pkgman install @uv ruff -> parses correctly."""
-    data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
-    with open(db_path, "w") as f:
-        json.dump(data, f)
-    r = run("-f", db_path, "install", "@uv", "ruff")
     # Not an argparse error (exit code 2 would be argparse error)
     assert r.returncode != 2
 
 
+@integration
+def test_install_at_uv_ruff_parses(db_path):
+    """pkgman install @uv ruff -> parses correctly (smoke test)."""
+    data = {
+        "version": 2, "sudo": "no",
+        "managers": {"uv": {"install": ["uv", "tool", "install", "{source}"], "remove": ["uv", "tool", "uninstall", "{name}"]}},
+        "packages": [],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    r = run("-f", db_path, "install", "@uv", "ruff")
+    # Not an argparse error
+    assert r.returncode != 2
+
+
+@integration
 def test_install_at_pi_name_source_parses(db_path):
-    """pkgman install @pi name source -> parses correctly."""
-    data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
+    """pkgman install @pi name source -> parses correctly (smoke test)."""
+    data = {
+        "version": 2, "sudo": "no",
+        "managers": {"pi": {"install": ["pi", "install", "{source}"], "remove": ["pi", "remove", "{name}"]}},
+        "packages": [],
+    }
     with open(db_path, "w") as f:
         json.dump(data, f)
     r = run("-f", db_path, "install", "@pi", "pi-subagents", "npm:@tintinweb/pi-subagents")
     assert r.returncode != 2
 
 
+@integration
 def test_remove_git_parses(db_path):
-    """pkgman remove git -> @auto implicit, parses correctly."""
+    """pkgman remove git -> @auto implicit, parses correctly (smoke test)."""
     data = {"version": 2, "sudo": "no", "managers": {}, "packages": [{"type": "package", "name": "git"}]}
     with open(db_path, "w") as f:
         json.dump(data, f)
@@ -90,9 +116,14 @@ def test_remove_git_parses(db_path):
     assert r.returncode != 2
 
 
+@integration
 def test_remove_at_pi_name_parses(db_path):
-    """pkgman remove @pi name -> parses correctly."""
-    data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
+    """pkgman remove @pi name -> parses correctly (smoke test)."""
+    data = {
+        "version": 2, "sudo": "no",
+        "managers": {"pi": {"install": ["echo"], "remove": ["echo"]}},
+        "packages": [{"type": "pi", "name": "pi-subagents"}],
+    }
     with open(db_path, "w") as f:
         json.dump(data, f)
     r = run("-f", db_path, "remove", "@pi", "pi-subagents")

@@ -71,61 +71,74 @@ class PackageStore:
 
     def __init__(self, db: Database) -> None:
         self._db = db
-        self._packages: list[dict] | None = None
-        self._sudo: str | None = None
-        self._managers: dict | None = None
+        self._loaded = False
+        self._packages: list[dict] = []
+        self._sudo: str = SudoSetting.NO
+        self._managers: dict[str, dict[str, list[str] | str | None]] = {}
 
     # -- cache helpers --
 
     def _ensure_loaded(self) -> None:
         """Populate cache from disk if not already loaded."""
-        if self._packages is not None:
+        if self._loaded:
             return
         data = self._db.read()
         self._packages = data.get("packages", [])
         self._sudo = data.get("sudo", SudoSetting.NO)
         self._managers = data.get("managers", dict(DEFAULT_MANAGERS))
-        self._migrate(data)
+        if self._migrate(data):
+            self._db.write(data)
+        self._loaded = True
         self.validate_managers()
 
-    def _migrate(self, data: dict) -> None:
-        """Handle v1 → v2 migration if needed, persisting immediately."""
+    def _migrate(self, data: dict) -> bool:
+        """Handle v1 → v2 migration if needed.
+
+        Returns True if data was migrated (caller should persist).
+        """
         version = data.get("version", 1)
         if version >= DB_VERSION:
-            return
+            return False
         # v1 → v2: inject managers + bump version
         self._managers = dict(DEFAULT_MANAGERS)
         data["version"] = DB_VERSION
         data["managers"] = dict(DEFAULT_MANAGERS)
-        self._db.write(data)
+        return True
+
+    def validate_managers(self) -> None:
+        """Raise ValueError if any custom manager uses a reserved name."""
+        for key in self._managers or {}:
+            if key in RESERVED_MANAGERS:
+                raise ValueError(
+                    f"Manager name '{key}' is reserved and cannot be used as a custom manager"
+                )
 
     def _invalidate(self) -> None:
         """Force reload on next access (useful for tests)."""
-        self._packages = None
-        self._sudo = None
-        self._managers = None
+        self._loaded = False
 
     # -- public properties --
 
     @property
     def sudo(self) -> str:
         self._ensure_loaded()
-        return self._sudo  # type: ignore[return-value]
+        return self._sudo
 
     @sudo.setter
     def sudo(self, value: str) -> None:
+        self._ensure_loaded()
         self._sudo = value
 
     @property
     def managers(self) -> dict:
         self._ensure_loaded()
-        return self._managers  # type: ignore[return-value]
+        return self._managers
 
     @property
     def packages(self) -> list[dict]:
         """Return a copy of the package list."""
         self._ensure_loaded()
-        return list(self._packages)  # type: ignore[arg-type]
+        return list(self._packages)
 
     # -- public methods --
 
@@ -136,7 +149,8 @@ class PackageStore:
 
     def save(self) -> None:
         """Persist current state to disk."""
-        self._ensure_loaded()
+        if not self._loaded:
+            raise RuntimeError("store not loaded; call load() first")
         self._db.write({
             "version": DB_VERSION,
             "sudo": self._sudo,
@@ -174,11 +188,3 @@ class PackageStore:
             if pkg.get("source") == source:
                 return pkg
         return None
-
-    def validate_managers(self) -> None:
-        """Raise ValueError if any custom manager uses a reserved name."""
-        for key in self._managers or {}:
-            if key in RESERVED_MANAGERS:
-                raise ValueError(
-                    f"Manager name '{key}' is reserved and cannot be used as a custom manager"
-                )
