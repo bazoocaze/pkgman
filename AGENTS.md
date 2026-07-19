@@ -24,6 +24,8 @@ pkgman remove git                                    # @auto: finds package by n
 pkgman remove @pi name                               # explicit manager
 pkgman list                                          # list registered packages
 pkgman list --json                                   # list as JSON
+pkgman configure                                     # detect known managers, add interactively
+pkgman configure -y                                  # non-interactive: add all detected
 pkgman -f ~/my_database.json list                    # use an alternative database
 ```
 
@@ -31,32 +33,160 @@ pkgman -f ~/my_database.json list                    # use an alternative databa
 
 ```
 pkgman.py          → entry point + argparse
-commands.py        → orchestrator (install/remove/list)
+commands.py        → orchestrator (install/remove/list/configure)
 database.py        → CRUD for ~/.config/.pkgman_database.json (v2 schema with managers)
 managers.py        → Manager (detection + execution of apt/yum/brew) and
                      ManagerRegistry + CustomManager (unified custom managers)
-tests/             → pytest test suite (69+ checks)
+constants.py       → enums (ManagerType, SudoSetting), DB_VERSION, DEFAULT_MANAGERS,
+                     KNOWN_MANAGERS, RESERVED_MANAGERS
+cli.py             → argparse setup + handler dispatch (COMMAND_DISPATCH)
+output.py          → console formatting (Report, format_package_list, _snippet)
+runner.py          → ProcessRunner protocol + SubprocessRunner (subprocess.run wrapper)
+tests/             → pytest test suite (84+ checks)
 pyproject.toml     → build config + entry point (pkgman = "pkgman:main")
-README.md          → install & usage docs
+```
+
+---
+
+## API cheat sheet – symbols you can import
+
+### constants.py
+| Symbol | Description |
+|---|---|
+| `ManagerType.PACKAGE`, `.AUTO` | `"package"`, `"auto"` |
+| `SudoSetting.YES`, `.NO` | `"yes"`, `"no"` |
+| `DB_VERSION` | Current schema version (2) |
+| `DEFAULT_MANAGERS` | `dict` — managers always present: `uv`, `script` |
+| `KNOWN_MANAGERS` | `dict` — `name → (exe, install_cmd, remove_cmd)`. Used by `configure`. |
+| `RESERVED_MANAGERS` | `frozenset({"package", "auto"})` — forbidden as custom manager names |
+
+### commands.py
+```
+Commands(db_path: str|Path = None, *, runner: ProcessRunner = None)
+
+  # properties
+  .store: PackageStore      # the loaded DB cache
+  .registry: ManagerRegistry  # routes install/remove to correct manager
+
+  # methods
+  .install(manager: str, name_or_names: str|list[str], source: str|None = None) -> None
+  .install_all() -> None
+  .remove(manager: str, name: str) -> None
+  .list(*, json_output: bool = False) -> None
+  .configure(*, yes: bool = False) -> None
+
+  # internal
+  ._sudo -> bool            # True when store.sudo == "yes"
+  ._sudo_for(manager) -> bool  # sudo only applies to @package
 ```
 
 ### database.py
+```
+Database(path: str|Path = None)
+  .read() -> dict           # raw JSON from disk
+  .write(data: dict) -> None
 
-Reads/writes `~/.config/.pkgman_database.json` in the following format (v2):
+PackageStore(db: Database)
+  .load() -> list[dict]     # populate cache
+  .save() -> None           # persist to disk
+  .add(package: dict) -> None     # ignore duplicates by name; auto-saves
+  .remove(name: str) -> None      # auto-saves
+  .find(name: str) -> dict|None
+  .find_by_source(source: str) -> dict|None
+
+  .sudo: str                # "yes" / "no" (setter persists)
+  .managers: dict           # mutable ref to managers dict
+  .packages: list[dict]     # copy of package list
+```
+
+**Important:** `store.managers[k] = v` mutates directly but does NOT auto-save — call `store.save()` after.
+
+### managers.py
+```
+Manager(name: str, *, runner: ProcessRunner = None)
+  .install(package_name: str, *, sudo: bool = False) -> None
+  .remove(package_name: str, *, sudo: bool = False) -> None
+
+CustomManager(name: str, install_cmd: list|str|None, remove_cmd: list|str|None)
+
+ManagerRegistry(store, runner: ProcessRunner = SubprocessRunner())
+  .get(manager_name: str) -> CustomManager|None
+  .install(manager_name, name, source, *, sudo=False) -> None
+  .remove(manager_name, name, source, *, sudo=False) -> None
+  .resolve_auto(name_or_source: str) -> tuple[str, dict]|None
+
+detect_os_manager() -> Manager|None   # brew > apt > yum
+_substitute(cmd, name, source)        # replaces {name}/{source} placeholders
+```
+
+### runner.py
+```
+ProcessRunner (Protocol)
+  .run(cmd: list[str]|str, *, shell: bool = False) -> None
+
+SubprocessRunner()           # real impl; raises CalledProcessError on failure
+```
+
+### output.py
+```
+Report()
+  .add_ok(ptype: str, name: str, detail: str = "") -> None
+  .add_fail(ptype: str, name: str, detail: str = "", snippet: str = "") -> None
+  .print() -> None
+
+format_package_list(packages: list[dict], *, json_output: bool = False) -> str
+```
+
+### cli.py
+```
+build_parser() -> ArgumentParser
+COMMAND_DISPATCH: dict[str, callable]   # {"install": ..., "remove": ..., "list": ..., "configure": ...}
+parse_install_args(args: list[str]) -> (manager, names|name, source|None)
+parse_remove_args(args: list[str]) -> (manager, name)
+```
+
+---
+
+## Adding a new subcommand
+
+1. **`cli.py`**: add subparser in `build_parser()`, create `_handle_xxx(cmds, args)`, register in `COMMAND_DISPATCH`
+2. **`commands.py`**: add method on `Commands`
+3. If adding a new `.py` file: include its module name in `[tool.setuptools] py-modules` in `pyproject.toml`
+
+## Adding a new known manager (for `configure`)
+
+Add entry to `KNOWN_MANAGERS` in `constants.py`:
+```python
+"name": (
+    "executable",                              # checked via shutil.which()
+    ["cmd", "install", "{source}"],            # install template
+    ["cmd", "remove", "{source}"],             # remove template (or None)
+),
+```
+
+## Testing conventions
+| Convention | Detail |
+|---|---|
+| Fixture `db_path` | Temp JSON file, auto-cleaned (`tests/conftest.py`) |
+| Fixture `empty_db` | Returns a ready-to-use `PackageStore` |
+| Mock install/remove | `patch.object(cmds.registry, "install")` / `"remove"` |
+| Mock PATH detection | `patch("commands.shutil.which", return_value=...)` |
+| Mock user input | `patch("builtins.input", return_value=...)` or `side_effect=[...]` |
+| Capture output | `capsys.readouterr()` (pytest built-in) |
+| CLI integration tests | `subprocess.run(["python3", "pkgman.py", ...])` via `run()` in `tests/test_cli.py` |
+| Real OS tests | Decorated `@integration`, gated by `PKGMAN_TEST_INTEGRATION=1` |
+
+## Database
+
+File: `~/.config/.pkgman_database.json` (default) or custom via `-f`/`--file`
 
 ```json
 {
   "version": 2,
   "sudo": "no",
   "managers": {
-    "uv": {
-      "install": ["uv", "tool", "install", "{source}"],
-      "remove": ["uv", "tool", "uninstall", "{name}"]
-    },
-    "script": {
-      "install": "curl -fsSL {source} | bash",
-      "remove": null
-    }
+    "uv": {"install": ["uv", "tool", "install", "{source}"], "remove": ["uv", "tool", "uninstall", "{name}"]},
+    "script": {"install": "curl -fsSL {source} | bash", "remove": null}
   },
   "packages": [
     {"type": "package", "name": "git"},
@@ -66,110 +196,17 @@ Reads/writes `~/.config/.pkgman_database.json` in the following format (v2):
 }
 ```
 
-Automatically migrates v1 → v2 on first load. The `managers` dict is
-**never overwritten** once a key exists.
-
-Instance methods: `load()`, `save()`, `add()`, `remove()`, `find()`.
-
-The file path can be customized via the `path` parameter in the constructor
-or via the `-f`/`--file` CLI flag.
-
-### managers.py
-
-- `Manager.detect()` → detects the available manager (brew > apt > yum)
-- `manager.install(name, sudo=False)` → runs `apt install -y name` (or equivalent)
-- `manager.remove(name, sudo=False)` → runs `apt remove -y name` (or equivalent)
-- When `sudo=True`, prefixes the command with `sudo`
-  (e.g. `["sudo", "apt", "install", "-y", "git"])`
-- `ManagerRegistry(db)` → unifies built-in `@package` with custom managers from JSON.
-  Methods: `get()`, `install()`, `remove()`, `resolve_auto()`.
-- `CustomManager(name, install_cmd, remove_cmd)` → dataclass representing a
-  custom manager entry from the JSON database. Placeholders `{name}`, `{source}`
-  are substituted at runtime.
-
-_(Removed in v2.0.0 — `uv` and `script` are now custom managers defined in the JSON database._
-_See `managers` in the database schema.)_
-
-### commands.py
-
-Orchestrates the operations. The order is always:
-1. Execute the command on the system
-2. If it fails → **does not change the database** (exception propagates)
-3. If OK → updates `~/.config/.pkgman_database.json` (or the one specified with `-f`)
-
-### pkgman.py
-
-CLI with `argparse`. Subcommands: `install`, `remove`, `list`.
-
-- `list --json` → outputs the package list as JSON instead of the default text format
-- `-V`/`--version` → shows the installed version via `importlib.metadata`
-
-### pyproject.toml
-
-Build config with setuptools. Defines the entry point (`pkgman = "pkgman:main"`)
-so tools like `uv tool install` and `pipx` create a `pkgman` command in PATH.
-
-**Tip:** When adding a new `.py` file at the project root, include its module name in
-`[tool.setuptools] py-modules`, otherwise `uv tool install` / `pipx` will not ship it.
-
-## Database
-
-File: `~/.config/.pkgman_database.json` (default) or custom via `-f`/`--file`
-
-- Versioned to allow future schema evolution
-- Empty or malformed file → treated as an empty list
-- Duplicates ignored by name (case-sensitive)
-
-## Sudo
-
-The `"sudo"` field in the JSON controls whether `@package` commands are
-run with `sudo`. Default value is `"no"`; can be manually changed to `"yes"`.
-Every write to the file persists the value explicitly.
-
-```json
-{
-  "version": 2,
-  "sudo": "yes",
-  "managers": {...},
-  "packages": [...]
-}
-```
-
-When `"sudo": "yes"`, commands executed by `Manager` (the built-in OS manager)
-are prefixed with `sudo` on both `install` and `remove`. Custom managers are
-**not** affected by the sudo setting.
-
-## Supported managers
-
-| Manager | Detected by | Install | Remove |
-|---|---|---|---|
-| brew | `which brew` | `brew install` | `brew uninstall` |
-| apt  | `which apt`  | `apt install -y` | `apt remove -y` |
-| yum  | `which yum`  | `yum install -y` | `yum remove -y` |
-
-Automatic detection at startup. The manager used is independent of how the
-package was originally installed — it always uses whatever is available on
-the current system (making the database portable between Linux and macOS).
-
-## Tests
-
-Run the full test suite with:
-
-```
-uv run pytest tests/
-# or
-./test.sh
-```
-
-Covers database CRUD, manager command building, Commands orchestration, CLI
-argument parsing, and custom manager execution (69+ checks).
+- Auto-migrates v1 → v2 on first load
+- `managers` dict keys are **never overwritten** once they exist (user customizations preserved)
+- Duplicate packages ignored by name (case-sensitive)
+- Empty or malformed file → treated as empty
+- `"sudo"` field controls `@package` commands only; custom managers are unaffected
 
 ## Release
 
-When user asks "make release", you should bump version, save all files, commit and push.
-Use SemVer.
+When asked "make release": bump version in `pyproject.toml` using SemVer, commit all changes, push.
 
-Commit messages must be concise and in English.
+Commit messages concise and in English.
 
 ## License
 
