@@ -186,6 +186,16 @@ Add entry to `KNOWN_MANAGERS` in `constants.py`:
 | CLI integration tests | `subprocess.run(["python3", "pkgman.py", ...])` via `run()` in `tests/test_cli.py` |
 | Real OS tests | Decorated `@integration`, gated by `PKGMAN_TEST_INTEGRATION=1` |
 
+## Running tests
+
+```bash
+uv sync              # install dev dependencies (pytest)
+uv run pytest        # run all tests
+uv run pytest -v     # verbose
+uv run pytest tests/test_cli.py  # single file
+PKGMAN_TEST_INTEGRATION=1 uv run pytest  # include integration tests
+```
+
 ## Database
 
 File: `~/.config/.pkgman_database.json` (default) or custom via `-f`/`--file`
