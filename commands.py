@@ -4,7 +4,6 @@ commands.py – orchestrates install, remove, list, and configure commands.
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -13,6 +12,7 @@ from database import Database, PackageStore
 from managers import ManagerRegistry
 from output import Report, _snippet, format_package_list
 from runner import ProcessRunner, SubprocessRunner
+from sys_check import RealSysCheck, SysCheck
 from ui import print_manager_summary, prompt_checkbox
 
 
@@ -24,11 +24,17 @@ class Commands:
         db_path: str | Path | None = None,
         *,
         runner: ProcessRunner | None = None,
+        sys_check: SysCheck | None = None,
     ) -> None:
         self._db = Database(db_path)
         self.store = PackageStore(self._db)
         self.store.load()               # prime cache + migrate if needed
-        self.registry = ManagerRegistry(self.store, runner=runner or SubprocessRunner())
+        self._sys_check = sys_check or RealSysCheck()
+        self.registry = ManagerRegistry(
+            self.store,
+            runner=runner or SubprocessRunner(),
+            sys_check=self._sys_check,
+        )
 
     # -- helpers ---------------------------------------------------------
 
@@ -150,7 +156,7 @@ class Commands:
             if mgr_name in managers:
                 print(f"Manager '@{mgr_name}' already registered — skipping.")
                 continue
-            if shutil.which(exe) is None:
+            if self._sys_check.which(exe) is None:
                 print(f"Manager '@{mgr_name}' ({exe!r}) not found on PATH — skipping.")
                 continue
             candidates.append((mgr_name, exe, install_cmd, remove_cmd))

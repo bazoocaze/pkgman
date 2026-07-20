@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pkgman"
-version = "2.2.0"
+version = "2.2.1"
 description = "Declarative layer over OS package managers. Replay your manually installed packages on fresh machines."
 requires-python = ">=3.11"
 authors = [{name = "Jose"}]
@@ -14,7 +14,7 @@ license = {text = "MIT"}
 pkgman = "pkgman:main"
 
 [tool.setuptools]
-py-modules = ["pkgman", "commands", "database", "managers", "constants", "output", "cli", "runner", "ui"]
+py-modules = ["pkgman", "commands", "database", "managers", "constants", "output", "cli", "runner", "ui", "sys_check"]
 
 [dependency-groups]
 dev = ["pytest"]

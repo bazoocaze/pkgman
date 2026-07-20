@@ -1,16 +1,31 @@
+import contextlib
+import io
 import json
 import os
 import subprocess
-import tempfile
 
 import pytest
 
+from pkgman import main
+from sys_check import SysCheck
 
-def run(*args):
-    return subprocess.run(
-        ["python3", "pkgman.py", *args],
-        capture_output=True,
-        text=True,
+
+def run(*args, sys_check: SysCheck | None = None):
+    """Run pkgman CLI in-process, return a CompletedProcess-like object."""
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+        try:
+            main(argv=list(args), sys_check=sys_check)
+        except SystemExit as e:
+            rc = e.code if e.code is not None else 0
+        else:
+            rc = 0
+    return subprocess.CompletedProcess(
+        args=["pkgman", *list(args)],
+        returncode=rc,
+        stdout=stdout.getvalue(),
+        stderr=stderr.getvalue(),
     )
 
 
@@ -197,7 +212,13 @@ def test_configure_yes_flag(db_path):
     data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
     with open(db_path, "w") as f:
         json.dump(data, f)
-    r = run("-f", db_path, "configure", "-y")
+
+    class FakeSysCheck:
+        @staticmethod
+        def which(executable: str) -> str | None:
+            return "/usr/bin/" + executable
+
+    r = run("-f", db_path, "configure", "-y", sys_check=FakeSysCheck())
     assert r.returncode == 0
     assert "1 manager(s) added" in r.stdout
     # Verify persisted

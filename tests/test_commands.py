@@ -9,6 +9,16 @@ from commands import Commands
 from constants import KNOWN_MANAGERS
 
 
+class FakeSysCheck:
+    def __init__(self, mapping: dict[str, str | None] | None = None) -> None:
+        self._mapping = mapping or {}
+
+    def which(self, executable: str) -> str | None:
+        if executable in self._mapping:
+            return self._mapping[executable]
+        return "/usr/bin/" + executable
+
+
 def test_commands_init_sudo_no(db_path):
     data = {"version": 1, "sudo": "no", "packages": []}
     with open(db_path, "w") as f:
@@ -315,9 +325,8 @@ def test_configure_not_found_on_path(db_path, capsys):
     data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
     with open(db_path, "w") as f:
         json.dump(data, f)
-    cmds = Commands(db_path=db_path)
-    with patch("commands.shutil.which", return_value=None):
-        cmds.configure()
+    cmds = Commands(db_path=db_path, sys_check=FakeSysCheck({"pi": None}))
+    cmds.configure()
     captured = capsys.readouterr()
     assert "not found on PATH" in captured.out
     assert "No new managers found" in captured.out
@@ -328,9 +337,8 @@ def test_configure_yes_adds_without_prompt(db_path, capsys):
     data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
     with open(db_path, "w") as f:
         json.dump(data, f)
-    cmds = Commands(db_path=db_path)
-    with patch("commands.shutil.which", return_value="/usr/bin/pi"):
-        cmds.configure(yes=True)
+    cmds = Commands(db_path=db_path, sys_check=FakeSysCheck())
+    cmds.configure(yes=True)
     captured = capsys.readouterr()
     assert "'@pi' added" in captured.out
     assert "1 manager(s) added" in captured.out
@@ -344,10 +352,9 @@ def test_configure_checkbox_select_some(db_path, capsys):
     data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
     with open(db_path, "w") as f:
         json.dump(data, f)
-    cmds = Commands(db_path=db_path)
+    cmds = Commands(db_path=db_path, sys_check=FakeSysCheck())
     # Simulate pi found; user picks '1'
     with (
-        patch("commands.shutil.which", return_value="/usr/bin/pi"),
         patch("builtins.input", return_value="1"),
     ):
         cmds.configure()
@@ -362,9 +369,8 @@ def test_configure_checkbox_select_all(db_path, capsys):
     data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
     with open(db_path, "w") as f:
         json.dump(data, f)
-    cmds = Commands(db_path=db_path)
+    cmds = Commands(db_path=db_path, sys_check=FakeSysCheck())
     with (
-        patch("commands.shutil.which", return_value="/usr/bin/pi"),
         patch("builtins.input", return_value="all"),
     ):
         cmds.configure()
@@ -377,9 +383,8 @@ def test_configure_checkbox_select_none(db_path, capsys):
     data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
     with open(db_path, "w") as f:
         json.dump(data, f)
-    cmds = Commands(db_path=db_path)
+    cmds = Commands(db_path=db_path, sys_check=FakeSysCheck())
     with (
-        patch("commands.shutil.which", return_value="/usr/bin/pi"),
         patch("builtins.input", return_value=""),
     ):
         cmds.configure()
@@ -393,9 +398,8 @@ def test_configure_checkbox_range(db_path, capsys):
     data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
     with open(db_path, "w") as f:
         json.dump(data, f)
-    cmds = Commands(db_path=db_path)
+    cmds = Commands(db_path=db_path, sys_check=FakeSysCheck())
     with (
-        patch("commands.shutil.which", return_value="/usr/bin/pi"),
         patch("builtins.input", return_value="1-1"),
     ):
         cmds.configure()
@@ -408,9 +412,8 @@ def test_configure_checkbox_invalid_then_valid(db_path, capsys):
     data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
     with open(db_path, "w") as f:
         json.dump(data, f)
-    cmds = Commands(db_path=db_path)
+    cmds = Commands(db_path=db_path, sys_check=FakeSysCheck())
     with (
-        patch("commands.shutil.which", return_value="/usr/bin/pi"),
         patch("builtins.input", side_effect=["abc", "99", "1"]),
     ):
         cmds.configure()
@@ -425,9 +428,8 @@ def test_configure_partial_already_registered(db_path, capsys):
     data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
     with open(db_path, "w") as f:
         json.dump(data, f)
-    cmds = Commands(db_path=db_path)
+    cmds = Commands(db_path=db_path, sys_check=FakeSysCheck())
     with (
-        patch("commands.shutil.which", return_value="/usr/bin/pi"),
         patch("builtins.input", return_value="1"),
     ):
         cmds.configure()
@@ -439,9 +441,8 @@ def test_configure_shows_summary(db_path, capsys):
     data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
     with open(db_path, "w") as f:
         json.dump(data, f)
-    cmds = Commands(db_path=db_path)
+    cmds = Commands(db_path=db_path, sys_check=FakeSysCheck())
     with (
-        patch("commands.shutil.which", return_value="/usr/bin/pi"),
         patch("builtins.input", return_value="1"),
     ):
         cmds.configure()

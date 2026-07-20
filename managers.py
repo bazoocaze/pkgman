@@ -7,26 +7,27 @@ Custom managers defined in the JSON database are executed with placeholder subst
 
 from __future__ import annotations
 
-import shutil
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
 from constants import ManagerType
 from runner import ProcessRunner, SubprocessRunner
+from sys_check import RealSysCheck, SysCheck
 
 
 # ---------------------------------------------------------------------------
 # OS-level package manager
 # ---------------------------------------------------------------------------
 
-def detect_os_manager() -> Manager | None:
+def detect_os_manager(*, sys_check: SysCheck | None = None) -> Manager | None:
     """Detect the available package manager on the system.
 
     Preference order: brew → apt → yum.
     Returns None if none is found.
     """
+    sc = sys_check or RealSysCheck()
     for name in ("brew", "apt", "yum"):
-        if shutil.which(name):
+        if sc.which(name):
             return Manager(name)
     return None
 
@@ -129,10 +130,11 @@ class ManagerRegistry:
 
     store: ManagerStore = field(repr=False)
     runner: ProcessRunner = field(default_factory=SubprocessRunner, repr=False)
+    sys_check: SysCheck = field(default_factory=RealSysCheck, repr=False)
 
     def _detect_os_manager(self) -> Manager:
         """Detect an OS-level manager or raise RuntimeError if none found."""
-        mgr = detect_os_manager()
+        mgr = detect_os_manager(sys_check=self.sys_check)
         if mgr is None:
             raise RuntimeError("No package manager detected (apt/yum/brew)")
         # Inject our runner so the OS manager uses the same runner

@@ -8,9 +8,11 @@ on fresh machines.
 
 import sys
 from importlib.metadata import PackageNotFoundError, version
+from typing import Optional
 
 from cli import COMMAND_DISPATCH, build_parser
 from commands import Commands
+from sys_check import SysCheck
 
 # -- version detection ---------------------------------------------------
 
@@ -23,9 +25,13 @@ except PackageNotFoundError:
 
 # -- main ----------------------------------------------------------------
 
-def main() -> None:
+def main(
+    argv: list[str] | None = None,
+    *,
+    sys_check: SysCheck | None = None,
+) -> None:
     parser = build_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.version:
         print(VERSION or "unknown", flush=True)
@@ -36,7 +42,7 @@ def main() -> None:
         sys.stdout.flush()
         sys.exit(1)
 
-    cmds = Commands(db_path=args.file)
+    cmds = Commands(db_path=args.file, sys_check=sys_check)
     handler = COMMAND_DISPATCH[args.command]
     handler(cmds, args)
 
