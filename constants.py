@@ -29,6 +29,11 @@ KNOWN_MANAGERS: dict[str, tuple[str, list[str] | str, list[str] | str | None]] =
         "curl -fsSL {source} | bash",
         None,
     ),
+    "zsh": (
+        "zsh",
+        "curl -fsSL {source} | zsh",
+        None,
+    ),
     "pi": (
         "pi",
         ["pi", "install", "{source}"],

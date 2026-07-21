@@ -18,6 +18,7 @@ pkgman install git jq                                # OS packages (default @pac
 pkgman install @uv ruff                              # Python tool via uv (name == source)
 pkgman install @uv ruff github:astral-sh/ruff        # uv tool with explicit source
 pkgman install @bash sdkman https://get.sdkman.io  # script from URL
+pkgman install @zsh oh-my-zsh https://...           # zsh script from URL
 pkgman install @pi name source                       # custom manager
 pkgman install -a                                    # replay: reinstall ALL from the database
 pkgman remove git                                    # @auto: finds package by name
@@ -43,7 +44,7 @@ cli.py             → argparse setup + handler dispatch (COMMAND_DISPATCH)
 output.py          → console formatting (Report, format_package_list, _snippet)
 ui.py              → interactive UI helpers (prompt_checkbox, print_manager_summary)
 runner.py          → ProcessRunner protocol + SubprocessRunner (subprocess.run wrapper)
-tests/             → pytest test suite (89 tests)
+tests/             → pytest test suite (90 tests)
 pyproject.toml     → build config + entry point (pkgman = "pkgman:main")
 ```
 
@@ -169,8 +170,16 @@ Add entry to `KNOWN_MANAGERS` in `constants.py`:
 ```python
 "name": (
     "executable",                              # checked via shutil.which()
-    ["cmd", "install", "{source}"],            # install template
+    ["cmd", "install", "{source}"],            # install template (list or string)
     ["cmd", "remove", "{source}"],             # remove template (or None)
+),
+```
+For shell-pipe managers (e.g. `bash`, `zsh`), use a string install command:
+```python
+"name": (
+    "executable",
+    "curl -fsSL {source} | executable",        # string → shell=True
+    None,                                       # None → database-only removal
 ),
 ```
 
@@ -206,7 +215,8 @@ File: `~/.config/.pkgman_database.json` (default) or custom via `-f`/`--file`
   "sudo": "no",
   "managers": {
     "uv": {"install": ["uv", "tool", "install", "{source}"], "remove": ["uv", "tool", "uninstall", "{source}"]},
-    "bash": {"install": "curl -fsSL {source} | bash", "remove": null}
+    "bash": {"install": "curl -fsSL {source} | bash", "remove": null},
+    "zsh": {"install": "curl -fsSL {source} | zsh", "remove": null}
   },
   "packages": [
     {"type": "package", "name": "git"},
@@ -233,7 +243,7 @@ When asked "make release": bump version in `pyproject.toml` using SemVer, update
 
 - **patch** (1.0.0 → 1.0.1): bugfixes, refactors, docs, tests, small new user-facing behavior.
 - **minor** (1.0.0 → 1.1.0): new feature, new subcommand, public API addition, small breaking changes.
-- **major** (1.0.0 → 2.0.0): new major versions. ask user before increment the major release.
+- **major** (1.0.0 → 2.0.0): new major versions. ask user before incrementing the major version.
 
 Commit messages concise and in English.
 

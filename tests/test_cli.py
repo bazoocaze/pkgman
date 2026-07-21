@@ -6,6 +6,7 @@ import subprocess
 
 import pytest
 
+from constants import KNOWN_MANAGERS
 from pkgman import main
 from sys_check import SysCheck
 
@@ -208,7 +209,7 @@ def test_configure_help():
 
 
 def test_configure_yes_flag(db_path):
-    """configure -y succeeds and adds pi manager."""
+    """configure -y succeeds and adds all detected managers."""
     data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
     with open(db_path, "w") as f:
         json.dump(data, f)
@@ -220,24 +221,26 @@ def test_configure_yes_flag(db_path):
 
     r = run("-f", db_path, "configure", "-y", sys_check=FakeSysCheck())
     assert r.returncode == 0
-    assert "3 manager(s) added" in r.stdout
+    assert f"{len(KNOWN_MANAGERS)} manager(s) added" in r.stdout
     # Verify persisted
     with open(db_path) as f:
         saved = json.load(f)
-    assert "pi" in saved["managers"]
-    assert "uv" in saved["managers"]
-    assert "bash" in saved["managers"]
+    assert len(saved["managers"]) == len(KNOWN_MANAGERS)
+    for name in KNOWN_MANAGERS:
+        assert name in saved["managers"]
 
 
 def test_configure_already_registered(db_path):
     """configure prints skip when manager already in DB."""
+    first = list(KNOWN_MANAGERS)[0]
+    rest = set(KNOWN_MANAGERS) - {first}
     data = {
         "version": 2,
         "sudo": "no",
         "managers": {
-            "pi": {
-                "install": ["pi", "install", "{source}"],
-                "remove": ["pi", "remove", "{name}"],
+            first: {
+                "install": ["echo"],
+                "remove": None,
             },
         },
         "packages": [],
@@ -248,7 +251,7 @@ def test_configure_already_registered(db_path):
     class FakeSysCheck:
         @staticmethod
         def which(executable: str) -> str | None:
-            if executable in ("bash", "uv"):
+            if executable in rest:
                 return None
             return "/usr/bin/" + executable
 

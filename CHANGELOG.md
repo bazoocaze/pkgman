@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.2.4] - 2026-07-20
+
+### Added
+
+- New known manager `@zsh` (script from URL piped to zsh, similar to `@bash`).
+
+### Changed
+
+- `configure` tests refactored to use `KNOWN_MANAGERS` dynamically — no hardcoded manager names in assertions, resilient to future additions.
+
 ## [2.2.3] - 2026-07-20
 
 ### Fixed

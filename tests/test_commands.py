@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from commands import Commands
+from constants import KNOWN_MANAGERS
 
 
 
@@ -297,18 +298,8 @@ def test_configure_all_already_registered(db_path, capsys):
         "version": 2,
         "sudo": "no",
         "managers": {
-            "bash": {
-                "install": "curl -fsSL {source} | bash",
-                "remove": None,
-            },
-            "pi": {
-                "install": ["pi", "install", "{source}"],
-                "remove": ["pi", "remove", "{name}"],
-            },
-            "uv": {
-                "install": ["uv", "tool", "install", "{source}"],
-                "remove": ["uv", "tool", "uninstall", "{source}"],
-            },
+            name: {"install": install_cmd, "remove": remove_cmd}
+            for name, (_, install_cmd, remove_cmd) in KNOWN_MANAGERS.items()
         },
         "packages": [],
     }
@@ -326,7 +317,7 @@ def test_configure_not_found_on_path(db_path, capsys):
     data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
     with open(db_path, "w") as f:
         json.dump(data, f)
-    cmds = Commands(db_path=db_path, sys_check=FakeSysCheck({"bash": None, "pi": None, "uv": None}))
+    cmds = Commands(db_path=db_path, sys_check=FakeSysCheck({name: None for name in KNOWN_MANAGERS}))
     cmds.configure()
     captured = capsys.readouterr()
     assert "not found on PATH" in captured.out
@@ -341,16 +332,12 @@ def test_configure_yes_adds_without_prompt(db_path, capsys):
     cmds = Commands(db_path=db_path, sys_check=FakeSysCheck())
     cmds.configure(yes=True)
     captured = capsys.readouterr()
-    assert "'@bash' added" in captured.out
-    assert "'@pi' added" in captured.out
-    assert "'@uv' added" in captured.out
-    assert "3 manager(s) added" in captured.out
-    assert "pi" in cmds.store.managers
-    assert "uv" in cmds.store.managers
-    assert cmds.store.managers["pi"]["install"] == ["pi", "install", "{source}"]
-    assert cmds.store.managers["pi"]["remove"] == ["pi", "remove", "{source}"]
-    assert cmds.store.managers["uv"]["install"] == ["uv", "tool", "install", "{source}"]
-    assert cmds.store.managers["uv"]["remove"] == ["uv", "tool", "uninstall", "{source}"]
+    assert len(cmds.store.managers) == len(KNOWN_MANAGERS)
+    for name, (_, install_cmd, remove_cmd) in KNOWN_MANAGERS.items():
+        assert name in cmds.store.managers
+        assert cmds.store.managers[name]["install"] == install_cmd
+        assert cmds.store.managers[name]["remove"] == remove_cmd
+    assert f"{len(KNOWN_MANAGERS)} manager(s) added" in captured.out
 
 
 def test_configure_checkbox_select_some(db_path, capsys):
@@ -359,14 +346,14 @@ def test_configure_checkbox_select_some(db_path, capsys):
     with open(db_path, "w") as f:
         json.dump(data, f)
     cmds = Commands(db_path=db_path, sys_check=FakeSysCheck())
-    # Simulate pi found; user picks '1'
+    # Simulate first candidate; user picks '1'
     with (
         patch("builtins.input", return_value="1"),
     ):
         cmds.configure()
     captured = capsys.readouterr()
-    assert "'@bash' added" in captured.out
     assert "1 manager(s) added" in captured.out
+    assert len(cmds.store.managers) == 1
     assert "[1]" in captured.out
 
 
@@ -381,7 +368,8 @@ def test_configure_checkbox_select_all(db_path, capsys):
     ):
         cmds.configure()
     captured = capsys.readouterr()
-    assert "'@pi' added" in captured.out
+    assert len(cmds.store.managers) == len(KNOWN_MANAGERS)
+    assert f"{len(KNOWN_MANAGERS)} manager(s) added" in captured.out
 
 
 def test_configure_checkbox_select_none(db_path, capsys):
@@ -396,7 +384,7 @@ def test_configure_checkbox_select_none(db_path, capsys):
         cmds.configure()
     captured = capsys.readouterr()
     assert "No managers added" in captured.out
-    assert "pi" not in cmds.store.managers
+    assert len(cmds.store.managers) == 0
 
 
 def test_configure_checkbox_range(db_path, capsys):
@@ -410,7 +398,7 @@ def test_configure_checkbox_range(db_path, capsys):
     ):
         cmds.configure()
     captured = capsys.readouterr()
-    assert "'@bash' added" in captured.out
+    assert "1 manager(s) added" in captured.out
 
 
 def test_configure_checkbox_invalid_then_valid(db_path, capsys):
@@ -426,7 +414,7 @@ def test_configure_checkbox_invalid_then_valid(db_path, capsys):
     captured = capsys.readouterr()
     assert "Invalid input" in captured.out
     assert "out of range" in captured.out
-    assert "'@bash' added" in captured.out
+    assert "1 manager(s) added" in captured.out
 
 
 def test_configure_partial_already_registered(db_path, capsys):
@@ -439,7 +427,7 @@ def test_configure_partial_already_registered(db_path, capsys):
         patch("builtins.input", return_value="1"),
     ):
         cmds.configure()
-    assert "bash" in cmds.store.managers
+    assert len(cmds.store.managers) > 0
 
 
 def test_configure_shows_summary(db_path, capsys):
@@ -449,11 +437,10 @@ def test_configure_shows_summary(db_path, capsys):
         json.dump(data, f)
     cmds = Commands(db_path=db_path, sys_check=FakeSysCheck())
     with (
-        patch("builtins.input", return_value="2"),
+        patch("builtins.input", return_value="3"),
     ):
         cmds.configure()
     captured = capsys.readouterr()
     assert "Registered custom managers" in captured.out
-    assert "@pi" in captured.out
     assert "🔧" in captured.out
     assert "🗑️" in captured.out

@@ -10,6 +10,11 @@ def test_known_managers_values():
             "curl -fsSL {source} | bash",
             None,
         ),
+        "zsh": (
+            "zsh",
+            "curl -fsSL {source} | zsh",
+            None,
+        ),
         "pi": (
             "pi",
             ["pi", "install", "{source}"],

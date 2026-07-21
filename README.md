@@ -27,6 +27,7 @@ pkgman install git jq                                # OS packages (default @pac
 pkgman install @uv ruff                              # Python tool via uv (name == source)
 pkgman install @uv ruff github:astral-sh/ruff        # uv tool with explicit source
 pkgman install @bash sdkman https://get.sdkman.io  # script from URL
+pkgman install @zsh oh-my-zsh https://...           # zsh script from URL
 pkgman install @pi name source                       # custom manager
 pkgman install -a                                    # replay: reinstall ALL from the database
 pkgman remove git                                    # @auto: finds package by name
@@ -67,10 +68,12 @@ commands with `sudo`. Custom managers are **not** affected by the sudo setting
 ## Supported managers
 
 | Manager | Detect | Install | Remove |
-|---|---|---|---|
+|---|---|---|---|---|
 | brew | `which brew` | `brew install` | `brew uninstall` |
 | apt  | `which apt`  | `apt install -y` | `apt remove -y` |
 | yum  | `which yum`  | `yum install -y` | `yum remove -y` |
+| bash | `which bash` | `curl ... \| bash` | database-only |
+| zsh  | `which zsh`  | `curl ... \| zsh`  | database-only |
 
 ## Database
 
@@ -90,6 +93,10 @@ custom path specified with `-f`/`--file`.
     },
     "bash": {
       "install": "curl -fsSL {source} | bash",
+      "remove": null
+    },
+    "zsh": {
+      "install": "curl -fsSL {source} | zsh",
       "remove": null
     },
     "pi": {
@@ -136,7 +143,7 @@ uv run pytest tests/
 ```
 
 Covers database CRUD, manager command building, Commands orchestration, CLI
-argument parsing, and custom manager execution (69+ checks).
+argument parsing, and custom manager execution (90+ checks).
 
 ## License
 
