@@ -86,7 +86,7 @@ custom path specified with `-f`/`--file`.
   "managers": {
     "uv": {
       "install": ["uv", "tool", "install", "{source}"],
-      "remove": ["uv", "tool", "uninstall", "{name}"]
+      "remove": ["uv", "tool", "uninstall", "{source}"]
     },
     "bash": {
       "install": "curl -fsSL {source} | bash",

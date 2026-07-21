@@ -205,7 +205,7 @@ File: `~/.config/.pkgman_database.json` (default) or custom via `-f`/`--file`
   "version": 2,
   "sudo": "no",
   "managers": {
-    "uv": {"install": ["uv", "tool", "install", "{source}"], "remove": ["uv", "tool", "uninstall", "{name}"]},
+    "uv": {"install": ["uv", "tool", "install", "{source}"], "remove": ["uv", "tool", "uninstall", "{source}"]},
     "bash": {"install": "curl -fsSL {source} | bash", "remove": null}
   },
   "packages": [

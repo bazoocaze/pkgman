@@ -80,11 +80,11 @@ class TestCustomManager:
         cm = CustomManager(
             name="uv",
             install_cmd=["uv", "tool", "install", "{source}"],
-            remove_cmd=["uv", "tool", "uninstall", "{name}"],
+            remove_cmd=["uv", "tool", "uninstall", "{source}"],
         )
         assert cm.name == "uv"
         assert cm.install_cmd == ["uv", "tool", "install", "{source}"]
-        assert cm.remove_cmd == ["uv", "tool", "uninstall", "{name}"]
+        assert cm.remove_cmd == ["uv", "tool", "uninstall", "{source}"]
 
     def test_none_remove(self):
         cm = CustomManager(
@@ -107,7 +107,7 @@ class TestManagerRegistry:
 
     def test_get_custom_manager(self):
         store = _make_store({"uv": {"install": ["uv", "tool", "install", "{source}"],
-                                     "remove": ["uv", "tool", "uninstall", "{name}"]}})
+                                     "remove": ["uv", "tool", "uninstall", "{source}"]}})
         reg = ManagerRegistry(store)
         cm = reg.get("uv")
         assert cm is not None
@@ -194,7 +194,7 @@ class TestCustomManagerExecution:
         mock_runner = self._make_mock_runner()
         store = _make_store(managers={
             "uv": {"install": ["uv", "tool", "install", "{source}"],
-                   "remove": ["uv", "tool", "uninstall", "{name}"]},
+                   "remove": ["uv", "tool", "uninstall", "{source}"]},
         })
         reg = ManagerRegistry(store, runner=mock_runner)
         reg.install("uv", "ruff", "github:astral-sh/ruff")
@@ -204,11 +204,11 @@ class TestCustomManagerExecution:
         mock_runner = self._make_mock_runner()
         store = _make_store(managers={
             "uv": {"install": ["uv", "tool", "install", "{source}"],
-                   "remove": ["uv", "tool", "uninstall", "{name}"]},
+                   "remove": ["uv", "tool", "uninstall", "{source}"]},
         })
         reg = ManagerRegistry(store, runner=mock_runner)
         reg.remove("uv", "ruff", "github:astral-sh/ruff")
-        mock_runner.run.assert_called_once_with(["uv", "tool", "uninstall", "ruff"], shell=False)
+        mock_runner.run.assert_called_once_with(["uv", "tool", "uninstall", "github:astral-sh/ruff"], shell=False)
 
     def test_registry_remove_null_cmd_is_db_only(self):
         mock_runner = self._make_mock_runner()

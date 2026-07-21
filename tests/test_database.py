@@ -205,7 +205,7 @@ class TestMigration:
             "managers": {
                 "uv": {
                     "install": ["uv", "tool", "install", "{source}"],
-                    "remove": ["uv", "tool", "uninstall", "{name}"],
+                    "remove": ["uv", "tool", "uninstall", "{source}"],
                 },
             },
             "packages": [{"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"}],

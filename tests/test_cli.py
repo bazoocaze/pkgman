@@ -97,7 +97,7 @@ def test_install_at_uv_ruff_parses(db_path):
     """pkgman install @uv ruff -> parses correctly (smoke test)."""
     data = {
         "version": 2, "sudo": "no",
-        "managers": {"uv": {"install": ["uv", "tool", "install", "{source}"], "remove": ["uv", "tool", "uninstall", "{name}"]}},
+        "managers": {"uv": {"install": ["uv", "tool", "install", "{source}"], "remove": ["uv", "tool", "uninstall", "{source}"]}},
         "packages": [],
     }
     with open(db_path, "w") as f:

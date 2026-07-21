@@ -37,7 +37,7 @@ KNOWN_MANAGERS: dict[str, tuple[str, list[str] | str, list[str] | str | None]] =
     "uv": (
         "uv",
         ["uv", "tool", "install", "{source}"],
-        ["uv", "tool", "uninstall", "{name}"],
+        ["uv", "tool", "uninstall", "{source}"],
     ),
 }
 

@@ -113,7 +113,7 @@ def test_install_all_all_success(db_path, capsys):
         "managers": {
             "uv": {
                 "install": ["uv", "tool", "install", "{source}"],
-                "remove": ["uv", "tool", "uninstall", "{name}"],
+                "remove": ["uv", "tool", "uninstall", "{source}"],
             },
             "bash": {
                 "install": "curl -fsSL {source} | bash",
@@ -180,7 +180,7 @@ def test_install_custom_manager(db_path, capsys):
         "managers": {
             "uv": {
                 "install": ["uv", "tool", "install", "{source}"],
-                "remove": ["uv", "tool", "uninstall", "{name}"],
+                "remove": ["uv", "tool", "uninstall", "{source}"],
             },
         },
         "packages": [],
@@ -225,7 +225,7 @@ def test_install_custom_manager_source_saved(db_path, capsys):
         "managers": {
             "uv": {
                 "install": ["uv", "tool", "install", "{source}"],
-                "remove": ["uv", "tool", "uninstall", "{name}"],
+                "remove": ["uv", "tool", "uninstall", "{source}"],
             },
         },
         "packages": [],
@@ -281,7 +281,7 @@ def test_remove_custom_manager(db_path, capsys):
         "managers": {
             "uv": {
                 "install": ["uv", "tool", "install", "{source}"],
-                "remove": ["uv", "tool", "uninstall", "{name}"],
+                "remove": ["uv", "tool", "uninstall", "{source}"],
             },
         },
         "packages": [{"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"}],
@@ -314,7 +314,7 @@ def test_configure_all_already_registered(db_path, capsys):
             },
             "uv": {
                 "install": ["uv", "tool", "install", "{source}"],
-                "remove": ["uv", "tool", "uninstall", "{name}"],
+                "remove": ["uv", "tool", "uninstall", "{source}"],
             },
         },
         "packages": [],
@@ -357,7 +357,7 @@ def test_configure_yes_adds_without_prompt(db_path, capsys):
     assert cmds.store.managers["pi"]["install"] == ["pi", "install", "{source}"]
     assert cmds.store.managers["pi"]["remove"] == ["pi", "remove", "{source}"]
     assert cmds.store.managers["uv"]["install"] == ["uv", "tool", "install", "{source}"]
-    assert cmds.store.managers["uv"]["remove"] == ["uv", "tool", "uninstall", "{name}"]
+    assert cmds.store.managers["uv"]["remove"] == ["uv", "tool", "uninstall", "{source}"]
 
 
 def test_configure_checkbox_select_some(db_path, capsys):
