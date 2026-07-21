@@ -78,17 +78,17 @@ class TestManager:
 class TestCustomManager:
     def test_dataclass(self):
         cm = CustomManager(
-            name="uv",
-            install_cmd=["uv", "tool", "install", "{source}"],
-            remove_cmd=["uv", "tool", "uninstall", "{source}"],
+            name="foobar",
+            install_cmd=["foobar", "install", "{source}"],
+            remove_cmd=["foobar", "remove", "{source}"],
         )
-        assert cm.name == "uv"
-        assert cm.install_cmd == ["uv", "tool", "install", "{source}"]
-        assert cm.remove_cmd == ["uv", "tool", "uninstall", "{source}"]
+        assert cm.name == "foobar"
+        assert cm.install_cmd == ["foobar", "install", "{source}"]
+        assert cm.remove_cmd == ["foobar", "remove", "{source}"]
 
     def test_none_remove(self):
         cm = CustomManager(
-            name="bash",
+            name="foobar",
             install_cmd="curl -fsSL {source} | bash",
             remove_cmd=None,
         )
@@ -106,13 +106,13 @@ class TestManagerRegistry:
         assert reg.get("package") is None
 
     def test_get_custom_manager(self):
-        store = _make_store({"uv": {"install": ["uv", "tool", "install", "{source}"],
-                                     "remove": ["uv", "tool", "uninstall", "{source}"]}})
+        store = _make_store({"foobar": {"install": ["foobar", "install", "{source}"],
+                                      "remove": ["foobar", "remove", "{source}"]}})
         reg = ManagerRegistry(store)
-        cm = reg.get("uv")
+        cm = reg.get("foobar")
         assert cm is not None
-        assert cm.name == "uv"
-        assert cm.install_cmd == ["uv", "tool", "install", "{source}"]
+        assert cm.name == "foobar"
+        assert cm.install_cmd == ["foobar", "install", "{source}"]
 
     def test_get_unknown_returns_none(self):
         reg = ManagerRegistry(_make_store())
@@ -126,9 +126,9 @@ class TestManagerRegistry:
 class TestSubstitute:
     def test_list(self):
         result = _substitute(
-            ["pi", "install", "{source}"], "pi-subagents", "npm:@tintinweb/pi-subagents"
+            ["foobar", "install", "{source}"], "pi-subagents", "npm:@tintinweb/pi-subagents"
         )
-        assert result == ["pi", "install", "npm:@tintinweb/pi-subagents"]
+        assert result == ["foobar", "install", "npm:@tintinweb/pi-subagents"]
 
     def test_string(self):
         result = _substitute(
@@ -138,9 +138,9 @@ class TestSubstitute:
 
     def test_name_placeholder(self):
         result = _substitute(
-            ["uv", "tool", "uninstall", "{name}"], "ruff", "github:astral-sh/ruff"
+            ["foobar", "tool", "uninstall", "{name}"], "ruff", "github:astral-sh/ruff"
         )
-        assert result == ["uv", "tool", "uninstall", "ruff"]
+        assert result == ["foobar", "tool", "uninstall", "ruff"]
 
     def test_none(self):
         assert _substitute(None, "x", "y") is None
@@ -158,12 +158,12 @@ class TestResolveAuto:
         assert result == ("package", {"type": "package", "name": "git"})
 
     def test_by_source(self):
-        store = _make_store(packages=[{"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"}])
+        store = _make_store(packages=[{"type": "foobar", "name": "ruff", "source": "github:astral-sh/ruff"}])
         reg = ManagerRegistry(store)
         result = reg.resolve_auto("github:astral-sh/ruff")
         assert result is not None
         mgr, pkg = result
-        assert mgr == "uv"
+        assert mgr == "foobar"
         assert pkg["name"] == "ruff"
 
     def test_not_found(self):
@@ -172,8 +172,8 @@ class TestResolveAuto:
 
     def test_ambiguous_raises(self):
         store = _make_store(packages=[
-            {"type": "pi", "name": "a", "source": "same-source"},
-            {"type": "bash", "name": "b", "source": "same-source"},
+            {"type": "foobar", "name": "a", "source": "same-source"},
+            {"type": "foobar", "name": "b", "source": "same-source"},
         ])
         reg = ManagerRegistry(store)
         with pytest.raises(ValueError, match="Ambiguous"):
@@ -193,29 +193,29 @@ class TestCustomManagerExecution:
     def test_registry_install_custom(self):
         mock_runner = self._make_mock_runner()
         store = _make_store(managers={
-            "uv": {"install": ["uv", "tool", "install", "{source}"],
-                   "remove": ["uv", "tool", "uninstall", "{source}"]},
+            "foobar": {"install": ["foobar", "install", "{source}"],
+                       "remove": ["foobar", "remove", "{source}"]},
         })
         reg = ManagerRegistry(store, runner=mock_runner)
-        reg.install("uv", "ruff", "github:astral-sh/ruff")
-        mock_runner.run.assert_called_once_with(["uv", "tool", "install", "github:astral-sh/ruff"], shell=False)
+        reg.install("foobar", "ruff", "github:astral-sh/ruff")
+        mock_runner.run.assert_called_once_with(["foobar", "install", "github:astral-sh/ruff"], shell=False)
 
     def test_registry_remove_custom(self):
         mock_runner = self._make_mock_runner()
         store = _make_store(managers={
-            "uv": {"install": ["uv", "tool", "install", "{source}"],
-                   "remove": ["uv", "tool", "uninstall", "{source}"]},
+            "foobar": {"install": ["foobar", "install", "{source}"],
+                       "remove": ["foobar", "remove", "{source}"]},
         })
         reg = ManagerRegistry(store, runner=mock_runner)
-        reg.remove("uv", "ruff", "github:astral-sh/ruff")
-        mock_runner.run.assert_called_once_with(["uv", "tool", "uninstall", "github:astral-sh/ruff"], shell=False)
+        reg.remove("foobar", "ruff", "github:astral-sh/ruff")
+        mock_runner.run.assert_called_once_with(["foobar", "remove", "github:astral-sh/ruff"], shell=False)
 
     def test_registry_remove_null_cmd_is_db_only(self):
         mock_runner = self._make_mock_runner()
         store = _make_store(managers={
-            "bash": {"install": "curl {source}", "remove": None},
+            "foobar": {"install": "curl {source}", "remove": None},
         })
         reg = ManagerRegistry(store, runner=mock_runner)
         # Should not raise – null remove_cmd means DB-only removal
-        reg.remove("bash", "sdkman", "https://get.sdkman.io")
+        reg.remove("foobar", "sdkman", "https://get.sdkman.io")
         mock_runner.run.assert_not_called()

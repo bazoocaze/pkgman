@@ -93,31 +93,31 @@ def test_install_git_works(db_path):
 
 
 @integration
-def test_install_at_uv_ruff_parses(db_path):
-    """pkgman install @uv ruff -> parses correctly (smoke test)."""
+def test_install_at_foobar_ruff_parses(db_path):
+    """pkgman install @foobar ruff -> parses correctly (smoke test)."""
     data = {
         "version": 2, "sudo": "no",
-        "managers": {"uv": {"install": ["uv", "tool", "install", "{source}"], "remove": ["uv", "tool", "uninstall", "{source}"]}},
+        "managers": {"foobar": {"install": ["foobar", "install", "{source}"], "remove": ["foobar", "remove", "{source}"]}},
         "packages": [],
     }
     with open(db_path, "w") as f:
         json.dump(data, f)
-    r = run("-f", db_path, "install", "@uv", "ruff")
+    r = run("-f", db_path, "install", "@foobar", "ruff")
     # Not an argparse error
     assert r.returncode != 2
 
 
 @integration
-def test_install_at_pi_name_source_parses(db_path):
-    """pkgman install @pi name source -> parses correctly (smoke test)."""
+def test_install_at_foobar_name_source_parses(db_path):
+    """pkgman install @foobar name source -> parses correctly (smoke test)."""
     data = {
         "version": 2, "sudo": "no",
-        "managers": {"pi": {"install": ["pi", "install", "{source}"], "remove": ["pi", "remove", "{name}"]}},
+        "managers": {"foobar": {"install": ["foobar", "install", "{source}"], "remove": ["foobar", "remove", "{name}"]}},
         "packages": [],
     }
     with open(db_path, "w") as f:
         json.dump(data, f)
-    r = run("-f", db_path, "install", "@pi", "pi-subagents", "npm:@tintinweb/pi-subagents")
+    r = run("-f", db_path, "install", "@foobar", "pi-subagents", "npm:@tintinweb/pi-subagents")
     assert r.returncode != 2
 
 
@@ -132,16 +132,16 @@ def test_remove_git_parses(db_path):
 
 
 @integration
-def test_remove_at_pi_name_parses(db_path):
-    """pkgman remove @pi name -> parses correctly (smoke test)."""
+def test_remove_at_foobar_name_parses(db_path):
+    """pkgman remove @foobar name -> parses correctly (smoke test)."""
     data = {
         "version": 2, "sudo": "no",
-        "managers": {"pi": {"install": ["echo"], "remove": ["echo"]}},
-        "packages": [{"type": "pi", "name": "pi-subagents"}],
+        "managers": {"foobar": {"install": ["echo"], "remove": ["echo"]}},
+        "packages": [{"type": "foobar", "name": "pi-subagents"}],
     }
     with open(db_path, "w") as f:
         json.dump(data, f)
-    r = run("-f", db_path, "remove", "@pi", "pi-subagents")
+    r = run("-f", db_path, "remove", "@foobar", "pi-subagents")
     assert r.returncode != 2
 
 
@@ -152,8 +152,8 @@ def test_list_with_f_flag_v1_auto_migration(db_path):
         "sudo": "no",
         "packages": [
             {"type": "package", "name": "git"},
-            {"type": "bash", "name": "uv", "url": "https://example.com"},
-            {"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"},
+            {"type": "foobar", "name": "uv", "url": "https://example.com"},
+            {"type": "foobar", "name": "ruff", "source": "github:astral-sh/ruff"},
         ],
     }
     with open(db_path, "w") as f:
@@ -173,8 +173,8 @@ def test_list_json_v1_auto_migration(db_path):
         "sudo": "no",
         "packages": [
             {"type": "package", "name": "git"},
-            {"type": "bash", "name": "uv", "url": "https://example.com"},
-            {"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"},
+            {"type": "foobar", "name": "uv", "url": "https://example.com"},
+            {"type": "foobar", "name": "ruff", "source": "github:astral-sh/ruff"},
         ],
     }
     with open(db_path, "w") as f:
@@ -186,9 +186,9 @@ def test_list_json_v1_auto_migration(db_path):
     assert result[0]["name"] == "git"
     assert result[0]["type"] == "package"
     assert result[1]["name"] == "uv"
-    assert result[1]["type"] == "bash"
+    assert result[1]["type"] == "foobar"
     assert result[2]["name"] == "ruff"
-    assert result[2]["type"] == "uv"
+    assert result[2]["type"] == "foobar"
     assert result[2]["source"] == "github:astral-sh/ruff"
 
 

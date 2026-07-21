@@ -19,7 +19,7 @@ class TestPackageStore:
         store.load()
         assert store.packages == []
         assert store.sudo == "no"
-        assert "uv" not in store.managers
+        assert "foobar" not in store.managers
         assert "script" not in store.managers
 
     def test_load_returns_packages(self, db_path):
@@ -44,7 +44,7 @@ class TestPackageStore:
         assert empty_db.find("nonexistent") is None
 
     def test_find_by_source(self, empty_db):
-        empty_db.add({"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"})
+        empty_db.add({"type": "foobar", "name": "ruff", "source": "github:astral-sh/ruff"})
         assert empty_db.find_by_source("github:astral-sh/ruff") is not None
         assert empty_db.find_by_source("github:astral-sh/ruff")["name"] == "ruff"
         assert empty_db.find_by_source("nonexistent") is None
@@ -63,7 +63,7 @@ class TestPackageStore:
         assert empty_db.sudo == "yes"
 
     def test_managers_default(self, empty_db):
-        assert "uv" not in empty_db.managers
+        assert "foobar" not in empty_db.managers
         assert "script" not in empty_db.managers
 
     def test_validate_managers_ok(self, empty_db):
@@ -110,13 +110,13 @@ class TestDatabase:
         assert data["packages"] == []
         assert data["sudo"] == "no"
         assert data["version"] == 2
-        assert "uv" not in data["managers"]
+        assert "foobar" not in data["managers"]
 
     def test_read_missing_file(self, tmp_path):
         db = Database(str(tmp_path / "missing.json"))
         data = db.read()
         assert data["packages"] == []
-        assert "uv" not in data["managers"]
+        assert "foobar" not in data["managers"]
 
     def test_read_malformed_json(self, db_path):
         with open(db_path, "w") as f:
@@ -146,14 +146,14 @@ class TestMigration:
             "version": 1,
             "sudo": "yes",
             "packages": [
-                {"type": "script", "name": "uv", "url": "https://example.com"},
+                {"type": "script", "name": "foobar", "url": "https://example.com"},
             ],
         }
         with open(db_path, "w") as f:
             json.dump(data, f)
         store = PackageStore(Database(db_path))
         store.load()
-        assert "uv" not in store.managers
+        assert "foobar" not in store.managers
         assert len(store.packages) == 1
 
     def test_save_preserves_sudo(self, db_path):
@@ -161,7 +161,7 @@ class TestMigration:
             "version": 1,
             "sudo": "yes",
             "packages": [
-                {"type": "script", "name": "uv", "url": "https://example.com"},
+                {"type": "script", "name": "foobar", "url": "https://example.com"},
             ],
         }
         with open(db_path, "w") as f:
@@ -182,14 +182,14 @@ class TestMigration:
             "sudo": "no",
             "packages": [
                 {"type": "package", "name": "git"},
-                {"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"},
+                {"type": "foobar", "name": "ruff", "source": "github:astral-sh/ruff"},
             ],
         }
         with open(db_path, "w") as f:
             json.dump(data, f)
         store = PackageStore(Database(db_path))
         store.load()
-        assert "uv" not in store.managers
+        assert "foobar" not in store.managers
         assert "script" not in store.managers
         assert len(store.packages) == 2
 
@@ -203,18 +203,18 @@ class TestMigration:
             "version": 2,
             "sudo": "no",
             "managers": {
-                "uv": {
-                    "install": ["uv", "tool", "install", "{source}"],
-                    "remove": ["uv", "tool", "uninstall", "{source}"],
+                "foobar": {
+                    "install": ["foobar", "tool", "install", "{source}"],
+                    "remove": ["foobar", "tool", "uninstall", "{source}"],
                 },
             },
-            "packages": [{"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"}],
+            "packages": [{"type": "foobar", "name": "ruff", "source": "github:astral-sh/ruff"}],
         }
         with open(db_path, "w") as f:
             json.dump(data, f)
         store = PackageStore(Database(db_path))
         store.load()
-        assert "uv" in store.managers
+        assert "foobar" in store.managers
         assert "script" not in store.managers
         assert len(store.packages) == 1
 
@@ -223,7 +223,7 @@ class TestMigration:
             "version": 2,
             "sudo": "no",
             "managers": {
-                "uv": {
+                "foobar": {
                     "install": ["custom", "install", "{source}"],
                     "remove": ["custom", "remove", "{name}"],
                 },
@@ -234,12 +234,12 @@ class TestMigration:
             json.dump(data, f)
         store = PackageStore(Database(db_path))
         store.load()
-        assert store.managers["uv"]["install"] == ["custom", "install", "{source}"]
+        assert store.managers["foobar"]["install"] == ["custom", "install", "{source}"]
 
         # Load again: still the same
         store._invalidate()
         store.load()
-        assert store.managers["uv"]["install"] == ["custom", "install", "{source}"]
+        assert store.managers["foobar"]["install"] == ["custom", "install", "{source}"]
 
     def test_empty_file_gets_default_managers(self, db_path):
         with open(db_path, "w") as f:
@@ -247,5 +247,5 @@ class TestMigration:
         store = PackageStore(Database(db_path))
         store.load()
         assert store.packages == []
-        assert "uv" not in store.managers
+        assert "foobar" not in store.managers
         assert "script" not in store.managers

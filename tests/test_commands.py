@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from commands import Commands
-from constants import KNOWN_MANAGERS
+
 
 
 class FakeSysCheck:
@@ -68,7 +68,7 @@ def test_list_with_uv_package(db_path, capsys):
         "sudo": "no",
         "packages": [
             {"type": "package", "name": "testpkg"},
-            {"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"},
+            {"type": "foobar", "name": "ruff", "source": "github:astral-sh/ruff"},
         ],
     }
     with open(db_path, "w") as f:
@@ -77,7 +77,7 @@ def test_list_with_uv_package(db_path, capsys):
     cmds.list()
     captured = capsys.readouterr()
     assert "PACKAGE  testpkg" in captured.out
-    assert "UV       ruff" in captured.out
+    assert "FOOBAR   ruff" in captured.out
 
 
 def test_list_with_bash_package(db_path, capsys):
@@ -85,7 +85,7 @@ def test_list_with_bash_package(db_path, capsys):
         "version": 1,
         "sudo": "no",
         "packages": [
-            {"type": "bash", "name": "sdkman", "source": "https://get.sdkman.io"},
+            {"type": "foobar", "name": "sdkman", "source": "https://get.sdkman.io"},
         ],
     }
     with open(db_path, "w") as f:
@@ -93,7 +93,7 @@ def test_list_with_bash_package(db_path, capsys):
     cmds = Commands(db_path=db_path)
     cmds.list()
     captured = capsys.readouterr()
-    assert "BASH     sdkman" in captured.out
+    assert "FOOBAR   sdkman" in captured.out
 
 
 def test_install_all_empty(db_path, capsys):
@@ -111,19 +111,14 @@ def test_install_all_all_success(db_path, capsys):
         "version": 2,
         "sudo": "no",
         "managers": {
-            "uv": {
-                "install": ["uv", "tool", "install", "{source}"],
-                "remove": ["uv", "tool", "uninstall", "{source}"],
-            },
-            "bash": {
-                "install": "curl -fsSL {source} | bash",
-                "remove": None,
+            "foobar": {
+                "install": ["foobar", "install", "{source}"],
+                "remove": ["foobar", "remove", "{source}"],
             },
         },
         "packages": [
             {"type": "package", "name": "git"},
-            {"type": "bash", "name": "uv", "source": "https://example.com/uv.sh"},
-            {"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"},
+            {"type": "foobar", "name": "ruff", "source": "github:astral-sh/ruff"},
         ],
     }
     with open(db_path, "w") as f:
@@ -132,11 +127,10 @@ def test_install_all_all_success(db_path, capsys):
     with patch.object(cmds.registry, "install") as mock_install:
         cmds.install_all()
     captured = capsys.readouterr()
-    assert "Summary: 3 succeeded, 0 failed" in captured.out
+    assert "Summary: 2 succeeded, 0 failed" in captured.out
     assert "PACKAGE" in captured.out
-    assert "BASH" in captured.out
-    assert "UV" in captured.out
-    assert mock_install.call_count == 3
+    assert "FOOBAR" in captured.out
+    assert mock_install.call_count == 2
 
 
 def test_install_all_partial_fail(db_path, capsys):
@@ -178,9 +172,9 @@ def test_install_custom_manager(db_path, capsys):
         "version": 2,
         "sudo": "no",
         "managers": {
-            "uv": {
-                "install": ["uv", "tool", "install", "{source}"],
-                "remove": ["uv", "tool", "uninstall", "{source}"],
+            "foobar": {
+                "install": ["foobar", "install", "{source}"],
+                "remove": ["foobar", "remove", "{source}"],
             },
         },
         "packages": [],
@@ -189,8 +183,8 @@ def test_install_custom_manager(db_path, capsys):
         json.dump(data, f)
     cmds = Commands(db_path=db_path)
     with patch.object(cmds.registry, "install") as mock_install:
-        cmds.install("uv", "ruff")
-    mock_install.assert_called_once_with("uv", "ruff", "ruff", sudo=False)
+        cmds.install("foobar", "ruff")
+    mock_install.assert_called_once_with("foobar", "ruff", "ruff", sudo=False)
     captured = capsys.readouterr()
     assert "ruff installed and registered" in captured.out
 
@@ -201,9 +195,9 @@ def test_install_custom_manager_with_source(db_path, capsys):
         "version": 2,
         "sudo": "no",
         "managers": {
-            "pi": {
-                "install": ["pi", "install", "{source}"],
-                "remove": ["pi", "remote", "{name}"],
+            "foobar": {
+                "install": ["foobar", "install", "{source}"],
+                "remove": ["foobar", "remove", "{name}"],
             },
         },
         "packages": [],
@@ -211,10 +205,9 @@ def test_install_custom_manager_with_source(db_path, capsys):
     with open(db_path, "w") as f:
         json.dump(data, f)
     cmds = Commands(db_path=db_path)
-    # The install method for non-package uses names as single name, source = name
     with patch.object(cmds.registry, "install") as mock_install:
-        cmds.install("pi", "pi-subagents")
-    mock_install.assert_called_once_with("pi", "pi-subagents", "pi-subagents", sudo=False)
+        cmds.install("foobar", "pi-subagents")
+    mock_install.assert_called_once_with("foobar", "pi-subagents", "pi-subagents", sudo=False)
 
 
 def test_install_custom_manager_source_saved(db_path, capsys):
@@ -223,9 +216,9 @@ def test_install_custom_manager_source_saved(db_path, capsys):
         "version": 2,
         "sudo": "no",
         "managers": {
-            "uv": {
-                "install": ["uv", "tool", "install", "{source}"],
-                "remove": ["uv", "tool", "uninstall", "{source}"],
+            "foobar": {
+                "install": ["foobar", "install", "{source}"],
+                "remove": ["foobar", "remove", "{source}"],
             },
         },
         "packages": [],
@@ -234,8 +227,8 @@ def test_install_custom_manager_source_saved(db_path, capsys):
         json.dump(data, f)
     cmds = Commands(db_path=db_path)
     with patch.object(cmds.registry, "install") as mock_install:
-        cmds.install("uv", "ruff", "github:astral-sh/ruff")
-    mock_install.assert_called_once_with("uv", "ruff", "github:astral-sh/ruff", sudo=False)
+        cmds.install("foobar", "ruff", "github:astral-sh/ruff")
+    mock_install.assert_called_once_with("foobar", "ruff", "github:astral-sh/ruff", sudo=False)
     captured = capsys.readouterr()
     assert "ruff installed and registered" in captured.out
     assert "Source: github:astral-sh/ruff" in captured.out
@@ -279,18 +272,18 @@ def test_remove_custom_manager(db_path, capsys):
         "version": 2,
         "sudo": "no",
         "managers": {
-            "uv": {
-                "install": ["uv", "tool", "install", "{source}"],
-                "remove": ["uv", "tool", "uninstall", "{source}"],
+            "foobar": {
+                "install": ["foobar", "install", "{source}"],
+                "remove": ["foobar", "remove", "{source}"],
             },
         },
-        "packages": [{"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"}],
+        "packages": [{"type": "foobar", "name": "ruff", "source": "github:astral-sh/ruff"}],
     }
     with open(db_path, "w") as f:
         json.dump(data, f)
     cmds = Commands(db_path=db_path)
     with patch.object(cmds.registry, "remove") as mock_remove:
-        cmds.remove("uv", "ruff")
+        cmds.remove("foobar", "ruff")
     captured = capsys.readouterr()
     assert "ruff removed from database" in captured.out
 

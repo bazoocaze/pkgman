@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.2.3] - 2026-07-20
+
+### Fixed
+
+- Break encapsulation between KNOWN_MANAGERS and tests: synthetic manager `foobar` replaces real manager names (uv/bash/pi) in custom-manager test scenarios. Single validation test in `test_known_managers.py` guards against accidental changes to KNOWN_MANAGERS values.
+
 ## [2.2.2] - 2026-07-20
 
 ### Breaking
