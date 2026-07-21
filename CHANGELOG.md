@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.2.2] - 2026-07-20
+
+### Breaking
+
+- Rename manager `script` → `bash`; moved from DEFAULT_MANAGERS to KNOWN_MANAGERS (now opt-in via `configure`).
+  - Existing databases with `"type": "script"` packages must be manually migrated to `"type": "bash"`.
+  - The `@script` prefix is no longer recognized; use `@bash` instead.
+
+### Fixed
+
+- `uv` remove command now uses `{source}` instead of `{name}` for correct uninstall of packages with explicit sources.
+
 ## [1.0.0] - 2026-07-16
 
 ### Added
