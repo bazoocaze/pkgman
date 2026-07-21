@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.2.5] - 2026-07-21
+
+### Fixed
+
+- Manager subprocesses now run with real stdout/stderr and stdin/tty passthrough instead of capturing output, restoring interactive prompts and live output.
+
 ## [2.2.4] - 2026-07-20
 
 ### Added

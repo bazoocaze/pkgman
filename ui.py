@@ -56,6 +56,6 @@ def print_manager_summary(managers: dict) -> None:
         print("  (none)")
     else:
         for name, cfg in sorted(custom_managers.items()):
-            has_install = "🔧" if cfg.get("install") else "  "
-            has_remove = "🗑️" if cfg.get("remove") else "  "
+            has_install = "🔧" if cfg.get("install") else "-"
+            has_remove = "🗑️" if cfg.get("remove") else "-"
             print(f"  @{name:<12} {has_install} install  {has_remove} remove")

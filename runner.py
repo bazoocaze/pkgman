@@ -40,8 +40,6 @@ class SubprocessRunner(ProcessRunner):
             raise ValueError(
                 "String command requires shell=True; pass a list or set shell=True"
             )
-        result = subprocess.run(cmd, shell=shell, capture_output=True, text=True)
+        result = subprocess.run(cmd, shell=shell)
         if result.returncode != 0:
-            raise subprocess.CalledProcessError(
-                result.returncode, cmd, output=result.stdout, stderr=result.stderr
-            )
+            raise subprocess.CalledProcessError(result.returncode, cmd)
