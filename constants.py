@@ -20,10 +20,6 @@ RESERVED_MANAGERS = frozenset({ManagerType.PACKAGE, ManagerType.AUTO})
 
 # Default custom managers bundled with pkgman
 DEFAULT_MANAGERS: dict[str, dict[str, list[str] | str | None]] = {
-    "uv": {
-        "install": ["uv", "tool", "install", "{source}"],
-        "remove": ["uv", "tool", "uninstall", "{name}"],
-    },
     "script": {
         "install": "curl -fsSL {source} | bash",
         "remove": None,
@@ -37,6 +33,11 @@ KNOWN_MANAGERS: dict[str, tuple[str, list[str] | str, list[str] | str | None]] =
         "pi",
         ["pi", "install", "{source}"],
         ["pi", "remove", "{source}"],
+    ),
+    "uv": (
+        "uv",
+        ["uv", "tool", "install", "{source}"],
+        ["uv", "tool", "uninstall", "{name}"],
     ),
 }
 

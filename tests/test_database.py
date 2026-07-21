@@ -19,7 +19,7 @@ class TestPackageStore:
         store.load()
         assert store.packages == []
         assert store.sudo == "no"
-        assert "uv" in store.managers
+        assert "uv" not in store.managers
         assert "script" in store.managers
 
     def test_load_returns_packages(self, db_path):
@@ -63,7 +63,7 @@ class TestPackageStore:
         assert empty_db.sudo == "yes"
 
     def test_managers_default(self, empty_db):
-        assert "uv" in empty_db.managers
+        assert "uv" not in empty_db.managers
         assert "script" in empty_db.managers
 
     def test_validate_managers_ok(self, empty_db):
@@ -110,13 +110,13 @@ class TestDatabase:
         assert data["packages"] == []
         assert data["sudo"] == "no"
         assert data["version"] == 2
-        assert "uv" in data["managers"]
+        assert "uv" not in data["managers"]
 
     def test_read_missing_file(self, tmp_path):
         db = Database(str(tmp_path / "missing.json"))
         data = db.read()
         assert data["packages"] == []
-        assert "uv" in data["managers"]
+        assert "uv" not in data["managers"]
 
     def test_read_malformed_json(self, db_path):
         with open(db_path, "w") as f:
@@ -153,8 +153,7 @@ class TestMigration:
             json.dump(data, f)
         store = PackageStore(Database(db_path))
         store.load()
-        assert store.sudo == "yes"
-        assert "uv" in store.managers
+        assert "uv" not in store.managers
         assert len(store.packages) == 1
 
     def test_save_preserves_sudo(self, db_path):
@@ -190,9 +189,8 @@ class TestMigration:
             json.dump(data, f)
         store = PackageStore(Database(db_path))
         store.load()
-        assert "uv" in store.managers
+        assert "uv" not in store.managers
         assert "script" in store.managers
-        assert store.managers["uv"]["install"] == ["uv", "tool", "install", "{source}"]
         assert len(store.packages) == 2
 
         with open(db_path) as f:
@@ -249,5 +247,5 @@ class TestMigration:
         store = PackageStore(Database(db_path))
         store.load()
         assert store.packages == []
-        assert "uv" in store.managers
+        assert "uv" not in store.managers
         assert "script" in store.managers

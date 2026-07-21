@@ -57,7 +57,7 @@ pyproject.toml     → build config + entry point (pkgman = "pkgman:main")
 | `ManagerType.PACKAGE`, `.AUTO` | `"package"`, `"auto"` |
 | `SudoSetting.YES`, `.NO` | `"yes"`, `"no"` |
 | `DB_VERSION` | Current schema version (2) |
-| `DEFAULT_MANAGERS` | `dict` — managers always present: `uv`, `script` |
+| `DEFAULT_MANAGERS` | `dict` — managers always present: `script` |
 | `KNOWN_MANAGERS` | `dict` — `name → (exe, install_cmd, remove_cmd)`. Used by `configure`. |
 | `RESERVED_MANAGERS` | `frozenset({"package", "auto"})` — forbidden as custom manager names |
 

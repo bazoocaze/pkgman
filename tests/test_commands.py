@@ -308,6 +308,10 @@ def test_configure_all_already_registered(db_path, capsys):
                 "install": ["pi", "install", "{source}"],
                 "remove": ["pi", "remove", "{name}"],
             },
+            "uv": {
+                "install": ["uv", "tool", "install", "{source}"],
+                "remove": ["uv", "tool", "uninstall", "{name}"],
+            },
         },
         "packages": [],
     }
@@ -325,7 +329,7 @@ def test_configure_not_found_on_path(db_path, capsys):
     data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
     with open(db_path, "w") as f:
         json.dump(data, f)
-    cmds = Commands(db_path=db_path, sys_check=FakeSysCheck({"pi": None}))
+    cmds = Commands(db_path=db_path, sys_check=FakeSysCheck({"pi": None, "uv": None}))
     cmds.configure()
     captured = capsys.readouterr()
     assert "not found on PATH" in captured.out
@@ -341,10 +345,14 @@ def test_configure_yes_adds_without_prompt(db_path, capsys):
     cmds.configure(yes=True)
     captured = capsys.readouterr()
     assert "'@pi' added" in captured.out
-    assert "1 manager(s) added" in captured.out
+    assert "'@uv' added" in captured.out
+    assert "2 manager(s) added" in captured.out
     assert "pi" in cmds.store.managers
+    assert "uv" in cmds.store.managers
     assert cmds.store.managers["pi"]["install"] == ["pi", "install", "{source}"]
     assert cmds.store.managers["pi"]["remove"] == ["pi", "remove", "{source}"]
+    assert cmds.store.managers["uv"]["install"] == ["uv", "tool", "install", "{source}"]
+    assert cmds.store.managers["uv"]["remove"] == ["uv", "tool", "uninstall", "{name}"]
 
 
 def test_configure_checkbox_select_some(db_path, capsys):

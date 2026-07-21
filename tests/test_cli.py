@@ -220,11 +220,12 @@ def test_configure_yes_flag(db_path):
 
     r = run("-f", db_path, "configure", "-y", sys_check=FakeSysCheck())
     assert r.returncode == 0
-    assert "1 manager(s) added" in r.stdout
+    assert "2 manager(s) added" in r.stdout
     # Verify persisted
     with open(db_path) as f:
         saved = json.load(f)
     assert "pi" in saved["managers"]
+    assert "uv" in saved["managers"]
 
 
 def test_configure_already_registered(db_path):
@@ -242,7 +243,15 @@ def test_configure_already_registered(db_path):
     }
     with open(db_path, "w") as f:
         json.dump(data, f)
-    r = run("-f", db_path, "configure", "-y")
+
+    class FakeSysCheck:
+        @staticmethod
+        def which(executable: str) -> str | None:
+            if executable == "uv":
+                return None
+            return "/usr/bin/" + executable
+
+    r = run("-f", db_path, "configure", "-y", sys_check=FakeSysCheck())
     assert r.returncode == 0
     assert "already registered" in r.stdout
     assert "No new managers found" in r.stdout
