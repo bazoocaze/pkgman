@@ -26,7 +26,7 @@ uv tool install --reinstall .     # install from local checkout
 pkgman install git jq                                # OS packages (default @package)
 pkgman install @uv ruff                              # Python tool via uv (name == source)
 pkgman install @uv ruff github:astral-sh/ruff        # uv tool with explicit source
-pkgman install @script sdkman https://get.sdkman.io  # script from URL
+pkgman install @bash sdkman https://get.sdkman.io  # script from URL
 pkgman install @pi name source                       # custom manager
 pkgman install -a                                    # replay: reinstall ALL from the database
 pkgman remove git                                    # @auto: finds package by name
@@ -88,7 +88,7 @@ custom path specified with `-f`/`--file`.
       "install": ["uv", "tool", "install", "{source}"],
       "remove": ["uv", "tool", "uninstall", "{name}"]
     },
-    "script": {
+    "bash": {
       "install": "curl -fsSL {source} | bash",
       "remove": null
     },
@@ -100,7 +100,7 @@ custom path specified with `-f`/`--file`.
   "packages": [
     {"type": "package", "name": "git"},
     {"type": "pi", "name": "pi-subagents", "source": "npm:@tintinweb/pi-subagents"},
-    {"type": "script", "name": "sdkman", "source": "https://get.sdkman.io"},
+    {"type": "bash", "name": "sdkman", "source": "https://get.sdkman.io"},
     {"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"}
   ]
 }
@@ -114,7 +114,7 @@ Each entry in `managers` defines:
   Placeholders `{name}` and `{source}` are substituted at runtime.
 - `remove`: a string, a list, or `null`. If `null`, removal is database-only.
 
-Built-in default managers (`uv`, `script`) are injected automatically on first
+Built-in default managers are injected automatically on first
 load or v1 migration. Once a manager key exists in the JSON, it is **never
 overwritten** by pkgman — the user can freely edit or extend them. Adding a new
 custom manager is as simple as adding a new key to the `managers` dictionary.

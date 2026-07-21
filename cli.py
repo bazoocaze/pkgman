@@ -72,7 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
     install_parser.add_argument(
         "args", nargs="*", metavar="[@MANAGER] NAME [SOURCE]",
         help="Package to install. Default manager is @package (OS packages). "
-             "Use @manager prefix for custom managers (e.g. @uv, @script).",
+             "Use @manager prefix for custom managers (e.g. @uv, @bash).",
     )
     install_parser.add_argument(
         "-a", "--all", action="store_true",

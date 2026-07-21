@@ -17,7 +17,7 @@ pipx install git+https://github.com/bazoocaze/pkgman
 pkgman install git jq                                # OS packages (default @package)
 pkgman install @uv ruff                              # Python tool via uv (name == source)
 pkgman install @uv ruff github:astral-sh/ruff        # uv tool with explicit source
-pkgman install @script sdkman https://get.sdkman.io  # script from URL
+pkgman install @bash sdkman https://get.sdkman.io  # script from URL
 pkgman install @pi name source                       # custom manager
 pkgman install -a                                    # replay: reinstall ALL from the database
 pkgman remove git                                    # @auto: finds package by name
@@ -57,7 +57,7 @@ pyproject.toml     → build config + entry point (pkgman = "pkgman:main")
 | `ManagerType.PACKAGE`, `.AUTO` | `"package"`, `"auto"` |
 | `SudoSetting.YES`, `.NO` | `"yes"`, `"no"` |
 | `DB_VERSION` | Current schema version (2) |
-| `DEFAULT_MANAGERS` | `dict` — managers always present: `script` |
+| `DEFAULT_MANAGERS` | `dict` — managers always present: (none by default) |
 | `KNOWN_MANAGERS` | `dict` — `name → (exe, install_cmd, remove_cmd)`. Used by `configure`. |
 | `RESERVED_MANAGERS` | `frozenset({"package", "auto"})` — forbidden as custom manager names |
 
@@ -206,11 +206,11 @@ File: `~/.config/.pkgman_database.json` (default) or custom via `-f`/`--file`
   "sudo": "no",
   "managers": {
     "uv": {"install": ["uv", "tool", "install", "{source}"], "remove": ["uv", "tool", "uninstall", "{name}"]},
-    "script": {"install": "curl -fsSL {source} | bash", "remove": null}
+    "bash": {"install": "curl -fsSL {source} | bash", "remove": null}
   },
   "packages": [
     {"type": "package", "name": "git"},
-    {"type": "script",  "name": "uv", "source": "https://..."},
+    {"type": "bash",  "name": "uv", "source": "https://..."},
     {"type": "uv",      "name": "ruff", "source": "github:astral-sh/ruff"}
   ]
 }

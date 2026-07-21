@@ -152,7 +152,7 @@ def test_list_with_f_flag_v1_auto_migration(db_path):
         "sudo": "no",
         "packages": [
             {"type": "package", "name": "git"},
-            {"type": "script", "name": "uv", "url": "https://example.com"},
+            {"type": "bash", "name": "uv", "url": "https://example.com"},
             {"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"},
         ],
     }
@@ -173,7 +173,7 @@ def test_list_json_v1_auto_migration(db_path):
         "sudo": "no",
         "packages": [
             {"type": "package", "name": "git"},
-            {"type": "script", "name": "uv", "url": "https://example.com"},
+            {"type": "bash", "name": "uv", "url": "https://example.com"},
             {"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"},
         ],
     }
@@ -186,7 +186,7 @@ def test_list_json_v1_auto_migration(db_path):
     assert result[0]["name"] == "git"
     assert result[0]["type"] == "package"
     assert result[1]["name"] == "uv"
-    assert result[1]["type"] == "script"
+    assert result[1]["type"] == "bash"
     assert result[2]["name"] == "ruff"
     assert result[2]["type"] == "uv"
     assert result[2]["source"] == "github:astral-sh/ruff"
@@ -220,12 +220,13 @@ def test_configure_yes_flag(db_path):
 
     r = run("-f", db_path, "configure", "-y", sys_check=FakeSysCheck())
     assert r.returncode == 0
-    assert "2 manager(s) added" in r.stdout
+    assert "3 manager(s) added" in r.stdout
     # Verify persisted
     with open(db_path) as f:
         saved = json.load(f)
     assert "pi" in saved["managers"]
     assert "uv" in saved["managers"]
+    assert "bash" in saved["managers"]
 
 
 def test_configure_already_registered(db_path):
@@ -247,7 +248,7 @@ def test_configure_already_registered(db_path):
     class FakeSysCheck:
         @staticmethod
         def which(executable: str) -> str | None:
-            if executable == "uv":
+            if executable in ("bash", "uv"):
                 return None
             return "/usr/bin/" + executable
 

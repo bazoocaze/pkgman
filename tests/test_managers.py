@@ -88,7 +88,7 @@ class TestCustomManager:
 
     def test_none_remove(self):
         cm = CustomManager(
-            name="script",
+            name="bash",
             install_cmd="curl -fsSL {source} | bash",
             remove_cmd=None,
         )
@@ -173,7 +173,7 @@ class TestResolveAuto:
     def test_ambiguous_raises(self):
         store = _make_store(packages=[
             {"type": "pi", "name": "a", "source": "same-source"},
-            {"type": "script", "name": "b", "source": "same-source"},
+            {"type": "bash", "name": "b", "source": "same-source"},
         ])
         reg = ManagerRegistry(store)
         with pytest.raises(ValueError, match="Ambiguous"):
@@ -213,9 +213,9 @@ class TestCustomManagerExecution:
     def test_registry_remove_null_cmd_is_db_only(self):
         mock_runner = self._make_mock_runner()
         store = _make_store(managers={
-            "script": {"install": "curl {source}", "remove": None},
+            "bash": {"install": "curl {source}", "remove": None},
         })
         reg = ManagerRegistry(store, runner=mock_runner)
         # Should not raise – null remove_cmd means DB-only removal
-        reg.remove("script", "sdkman", "https://get.sdkman.io")
+        reg.remove("bash", "sdkman", "https://get.sdkman.io")
         mock_runner.run.assert_not_called()

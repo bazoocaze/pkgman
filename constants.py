@@ -19,16 +19,16 @@ class SudoSetting(StrEnum):
 RESERVED_MANAGERS = frozenset({ManagerType.PACKAGE, ManagerType.AUTO})
 
 # Default custom managers bundled with pkgman
-DEFAULT_MANAGERS: dict[str, dict[str, list[str] | str | None]] = {
-    "script": {
-        "install": "curl -fsSL {source} | bash",
-        "remove": None,
-    },
-}
+DEFAULT_MANAGERS: dict[str, dict[str, list[str] | str | None]] = {}
 
 # Known managers that "configure" can detect and offer to add.
 # Maps manager name → (executable to check via which, install_cmd, remove_cmd).
 KNOWN_MANAGERS: dict[str, tuple[str, list[str] | str, list[str] | str | None]] = {
+    "bash": (
+        "bash",
+        "curl -fsSL {source} | bash",
+        None,
+    ),
     "pi": (
         "pi",
         ["pi", "install", "{source}"],

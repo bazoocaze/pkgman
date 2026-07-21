@@ -20,7 +20,7 @@ class TestPackageStore:
         assert store.packages == []
         assert store.sudo == "no"
         assert "uv" not in store.managers
-        assert "script" in store.managers
+        assert "script" not in store.managers
 
     def test_load_returns_packages(self, db_path):
         store = PackageStore(Database(db_path))
@@ -64,7 +64,7 @@ class TestPackageStore:
 
     def test_managers_default(self, empty_db):
         assert "uv" not in empty_db.managers
-        assert "script" in empty_db.managers
+        assert "script" not in empty_db.managers
 
     def test_validate_managers_ok(self, empty_db):
         empty_db.validate_managers()  # no exception
@@ -190,7 +190,7 @@ class TestMigration:
         store = PackageStore(Database(db_path))
         store.load()
         assert "uv" not in store.managers
-        assert "script" in store.managers
+        assert "script" not in store.managers
         assert len(store.packages) == 2
 
         with open(db_path) as f:
@@ -248,4 +248,4 @@ class TestMigration:
         store.load()
         assert store.packages == []
         assert "uv" not in store.managers
-        assert "script" in store.managers
+        assert "script" not in store.managers
