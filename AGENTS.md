@@ -32,6 +32,7 @@ pkgman update git jq                                 # update multiple packages
 pkgman update -a                                     # update ALL packages from the database
 pkgman update @pi -a                                 # update ALL packages from @pi manager only
 pkgman update @pi nome                               # update package under @pi manager
+pkgman doctor                                        # run diagnostic checks
 pkgman -f ~/my_database.json list                    # use an alternative database
 ```
 
@@ -39,7 +40,8 @@ pkgman -f ~/my_database.json list                    # use an alternative databa
 
 ```
 pkgman.py          → entry point + argparse
-commands.py        → orchestrator (install/remove/update/list/configure)
+command_doctor.py  → diagnostic checks (DoctorReport, run_doctor)
+commands.py        → orchestrator (install/remove/update/list/configure/doctor)
 database.py        → CRUD for ~/.config/.pkgman_database.json (v2 schema with managers)
 managers.py        → Manager (detection + execution of apt/yum/brew) and
                      ManagerRegistry + CustomManager (unified custom managers)
@@ -82,6 +84,7 @@ Commands(db_path: str|Path = None, *, runner: ProcessRunner = None)
   .update_all(*, manager: str|None = None) -> None
   .list(*, json_output: bool = False) -> None
   .configure(*, yes: bool = False) -> None
+  .doctor() -> bool   # True if no errors
 
   # internal
   ._sudo -> bool            # True when store.sudo == "yes"
@@ -156,10 +159,22 @@ print_manager_summary(managers: dict) -> None
 - `prompt_checkbox` — interactive numbered selection prompt for configure
 - `print_manager_summary` — prints registered custom managers with install/remove/update icons
 
+### command_doctor.py
+```
+DoctorReport()
+  .ok(detail: str) -> None
+  .warn(detail: str) -> None
+  .error(detail: str) -> None
+  .has_errors -> bool
+  .print() -> None
+
+run_doctor(store: PackageStore, sys_check: SysCheck) -> DoctorReport
+```
+
 ### cli.py
 ```
 build_parser() -> ArgumentParser
-COMMAND_DISPATCH: dict[str, callable]   # {"install": ..., "remove": ..., "list": ..., "configure": ..., "update": ...}
+COMMAND_DISPATCH: dict[str, callable]   # {"install": ..., "remove": ..., "list": ..., "configure": ..., "update": ..., "doctor": ...}
 parse_install_args(args: list[str]) -> (manager, names|name, source|None)
 parse_remove_args(args: list[str]) -> (manager, name)
 ```
