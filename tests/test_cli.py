@@ -241,6 +241,7 @@ def test_configure_already_registered(db_path):
             first: {
                 "install": ["echo"],
                 "remove": None,
+                "update": None,
             },
         },
         "packages": [],
@@ -259,3 +260,56 @@ def test_configure_already_registered(db_path):
     assert r.returncode == 0
     assert "already registered" in r.stdout
     assert "No new managers found" in r.stdout
+
+
+# -- update --------------------------------------------------------------
+
+
+def test_update_help():
+    r = run("update", "-h")
+    assert r.returncode == 0
+    assert "NAME" in r.stdout
+    assert "-a" in r.stdout
+    assert "--all" in r.stdout
+
+
+def test_update_no_args_exits_nonzero():
+    """update requires at least NAME or -a -> non-zero exit."""
+    r = run("update")
+    assert r.returncode != 0
+
+
+def test_update_names(db_path):
+    """update NAME resolves and attempts update."""
+    data = {
+        "version": 2, "sudo": "no", "managers": {},
+        "packages": [{"type": "package", "name": "git"}],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    r = run("-f", db_path, "update", "git")
+    assert r.returncode == 0
+    assert "not found" not in r.stdout
+
+
+def test_update_not_found(db_path):
+    """update warns when package not in database."""
+    data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    r = run("-f", db_path, "update", "nonexistent")
+    assert r.returncode == 0
+    assert "not found" in r.stdout
+
+
+@integration
+def test_update_all_parses(db_path):
+    """pkgman update -a parses correctly (smoke test)."""
+    data = {
+        "version": 2, "sudo": "no", "managers": {},
+        "packages": [{"type": "package", "name": "git"}],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    r = run("-f", db_path, "update", "-a")
+    assert r.returncode != 2

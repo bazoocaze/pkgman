@@ -11,7 +11,6 @@ from pathlib import Path
 
 from constants import (
     DB_VERSION,
-    DEFAULT_MANAGERS,
     RESERVED_MANAGERS,
     ManagerType,
     SudoSetting,
@@ -53,7 +52,7 @@ class Database:
         return {
             "version": DB_VERSION,
             "sudo": SudoSetting.NO,
-            "managers": dict(DEFAULT_MANAGERS),
+            "managers": {},
             "packages": [],
         }
 
@@ -85,7 +84,7 @@ class PackageStore:
         data = self._db.read()
         self._packages = data.get("packages", [])
         self._sudo = data.get("sudo", SudoSetting.NO)
-        self._managers = data.get("managers", dict(DEFAULT_MANAGERS))
+        self._managers = data.get("managers", {})
         if self._migrate(data):
             self._db.write(data)
         self._loaded = True
@@ -100,9 +99,9 @@ class PackageStore:
         if version >= DB_VERSION:
             return False
         # v1 → v2: inject managers + bump version
-        self._managers = dict(DEFAULT_MANAGERS)
+        self._managers = {}
         data["version"] = DB_VERSION
-        data["managers"] = dict(DEFAULT_MANAGERS)
+        data["managers"] = {}
         return True
 
     def validate_managers(self) -> None:

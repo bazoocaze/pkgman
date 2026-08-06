@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.2.6] - 2026-08-05
+
+### Added
+
+- New `update` subcommand: `pkgman update <name>`, `pkgman update -a` to update registered packages.
+- New `update_cmd` field on custom managers — each manager defines its own update command.
+- `print_manager_summary` now shows update capability (🔄 icon) per custom manager.
+
+### Changed
+
+- `KNOWN_MANAGERS` restructured from tuple-of-4 to dict-of-dicts (`{exe, install, remove, update}`) for better encapsulation.
+- `prompt_checkbox` refactored to generic `list[str] -> list[int]` — no longer coupled to manager data structure.
+- `DEFAULT_MANAGERS` removed (always empty, unused indirection).
+
 ## [2.2.5] - 2026-07-21
 
 ### Fixed

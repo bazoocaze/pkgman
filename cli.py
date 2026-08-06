@@ -98,6 +98,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Add all detected managers without prompting",
     )
 
+    # update
+    update_parser = subparsers.add_parser("update", help="Update one or more packages")
+    update_parser.add_argument(
+        "names", nargs="*", metavar="NAME",
+        help="Package name(s) to update. Resolved from the database.",
+    )
+    update_parser.add_argument(
+        "-a", "--all", action="store_true",
+        help="Update all packages from the database",
+    )
+
     return parser
 
 
@@ -135,6 +146,16 @@ def _handle_configure(cmds: Commands, args: argparse.Namespace) -> None:
     cmds.configure(yes=args.yes)
 
 
+def _handle_update(cmds: Commands, args: argparse.Namespace) -> None:
+    if args.all:
+        cmds.update_all()
+    elif args.names:
+        cmds.update(args.names)
+    else:
+        print("update: error: the following arguments are required: NAME or -a/--all", file=sys.stderr)
+        sys.exit(1)
+
+
 # -- dispatch mapping ----------------------------------------------------
 
 COMMAND_DISPATCH: dict[str, callable] = {
@@ -142,4 +163,5 @@ COMMAND_DISPATCH: dict[str, callable] = {
     "remove": _handle_remove,
     "list": _handle_list,
     "configure": _handle_configure,
+    "update": _handle_update,
 }

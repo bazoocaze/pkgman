@@ -47,6 +47,10 @@ class Manager:
         """Remove a package."""
         self._run("remove", package_name, sudo)
 
+    def update(self, package_name: str, *, sudo: bool = False) -> None:
+        """Upgrade an already-installed package."""
+        self._run("update", package_name, sudo)
+
     def _run(self, action: str, package_name: str, sudo: bool) -> None:
         cmd = self._build_cmd(action, package_name)
         if sudo:
@@ -55,11 +59,23 @@ class Manager:
 
     def _build_cmd(self, action: str, package_name: str) -> list[str]:
         """Build the argument list for this manager."""
+        if action == "update":
+            return self._build_update_cmd(package_name)
         if self.name in ("apt", "yum"):
             return [self.name, action, "-y", package_name]
         if self.name == "brew":
             resolved = "uninstall" if action == "remove" else action
             return [self.name, resolved, package_name]
+        raise ValueError(f"Unknown manager: {self.name}")
+
+    def _build_update_cmd(self, package_name: str) -> list[str]:
+        """Build the update/upgrade command for this manager."""
+        if self.name == "apt":
+            return ["apt", "install", "--only-upgrade", "-y", package_name]
+        if self.name == "yum":
+            return ["yum", "update", "-y", package_name]
+        if self.name == "brew":
+            return ["brew", "upgrade", package_name]
         raise ValueError(f"Unknown manager: {self.name}")
 
 
@@ -74,6 +90,7 @@ class CustomManager:
     name: str
     install_cmd: list[str] | str | None = None
     remove_cmd: list[str] | str | None = None
+    update_cmd: list[str] | str | None = None
 
     @classmethod
     def from_dict(cls, name: str, data: dict) -> CustomManager:
@@ -82,6 +99,7 @@ class CustomManager:
             name=name,
             install_cmd=data.get("install"),
             remove_cmd=data.get("remove"),
+            update_cmd=data.get("update"),
         )
 
 
@@ -171,6 +189,18 @@ class ManagerRegistry:
             return
 
         cmd = _substitute(custom.remove_cmd, name, source)
+        if cmd is not None:
+            self.runner.run(cmd, shell=isinstance(cmd, str))
+
+    def update(self, manager_name: str, name: str, source: str, *, sudo: bool = False) -> None:
+        """Route update to the appropriate manager."""
+        custom = self.get(manager_name)
+        if custom is None:
+            mgr = self._detect_os_manager()
+            mgr.update(name, sudo=sudo)
+            return
+
+        cmd = _substitute(custom.update_cmd, name, source)
         if cmd is not None:
             self.runner.run(cmd, shell=isinstance(cmd, str))
 

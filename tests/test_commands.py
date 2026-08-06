@@ -289,6 +289,105 @@ def test_remove_custom_manager(db_path, capsys):
     assert "ruff removed from database" in captured.out
 
 
+# -- update --------------------------------------------------------------
+
+
+def test_update_single_package(db_path, capsys):
+    """Update a single package by name."""
+    data = {
+        "version": 2, "sudo": "no", "managers": {},
+        "packages": [{"type": "package", "name": "git"}],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    cmds = Commands(db_path=db_path)
+    with patch.object(cmds.registry, "update") as mock_update:
+        cmds.update(["git"])
+    mock_update.assert_called_once_with("package", "git", "git", sudo=False)
+    captured = capsys.readouterr()
+    assert "git updated" in captured.out
+
+
+def test_update_multiple_packages(db_path, capsys):
+    """Update multiple packages by name."""
+    data = {
+        "version": 2, "sudo": "no", "managers": {},
+        "packages": [
+            {"type": "package", "name": "git"},
+            {"type": "package", "name": "jq"},
+        ],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    cmds = Commands(db_path=db_path)
+    with patch.object(cmds.registry, "update") as mock_update:
+        cmds.update(["git", "jq"])
+    assert mock_update.call_count == 2
+    captured = capsys.readouterr()
+    assert "git updated" in captured.out
+    assert "jq updated" in captured.out
+
+
+def test_update_not_found(db_path, capsys):
+    """Update warns when package not in database."""
+    data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    cmds = Commands(db_path=db_path)
+    cmds.update(["nonexistent"])
+    captured = capsys.readouterr()
+    assert "not found" in captured.out
+
+
+def test_update_all_empty(db_path, capsys):
+    """update_all prints message when no packages registered."""
+    data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    cmds = Commands(db_path=db_path)
+    cmds.update_all()
+    captured = capsys.readouterr()
+    assert "No registered packages to update" in captured.out
+
+
+def test_update_all_all_success(db_path, capsys):
+    """update_all succeeds for all packages."""
+    data = {
+        "version": 2, "sudo": "no", "managers": {},
+        "packages": [
+            {"type": "package", "name": "git"},
+            {"type": "package", "name": "jq"},
+        ],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    cmds = Commands(db_path=db_path)
+    with patch.object(cmds.registry, "update") as mock_update:
+        cmds.update_all()
+    assert mock_update.call_count == 2
+    captured = capsys.readouterr()
+    assert "Summary: 2 succeeded, 0 failed" in captured.out
+
+
+def test_update_all_partial_fail(db_path, capsys):
+    """update_all reports partial failures."""
+    data = {
+        "version": 2, "sudo": "no", "managers": {},
+        "packages": [
+            {"type": "package", "name": "git"},
+            {"type": "package", "name": "jq"},
+        ],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    cmds = Commands(db_path=db_path)
+    with patch.object(cmds.registry, "update") as mock_update:
+        mock_update.side_effect = [None, subprocess.CalledProcessError(1, ["apt", "install", "--only-upgrade", "-y", "jq"])]
+        cmds.update_all()
+    captured = capsys.readouterr()
+    assert "Summary: 1 succeeded, 1 failed" in captured.out
+
+
 # -- configure ----------------------------------------------------------
 
 
@@ -298,8 +397,8 @@ def test_configure_all_already_registered(db_path, capsys):
         "version": 2,
         "sudo": "no",
         "managers": {
-            name: {"install": install_cmd, "remove": remove_cmd}
-            for name, (_, install_cmd, remove_cmd) in KNOWN_MANAGERS.items()
+            name: {"install": mgr["install"], "remove": mgr["remove"], "update": mgr["update"]}
+            for name, mgr in KNOWN_MANAGERS.items()
         },
         "packages": [],
     }
@@ -333,10 +432,11 @@ def test_configure_yes_adds_without_prompt(db_path, capsys):
     cmds.configure(yes=True)
     captured = capsys.readouterr()
     assert len(cmds.store.managers) == len(KNOWN_MANAGERS)
-    for name, (_, install_cmd, remove_cmd) in KNOWN_MANAGERS.items():
+    for name, mgr in KNOWN_MANAGERS.items():
         assert name in cmds.store.managers
-        assert cmds.store.managers[name]["install"] == install_cmd
-        assert cmds.store.managers[name]["remove"] == remove_cmd
+        assert cmds.store.managers[name]["install"] == mgr["install"]
+        assert cmds.store.managers[name]["remove"] == mgr["remove"]
+        assert cmds.store.managers[name]["update"] == mgr["update"]
     assert f"{len(KNOWN_MANAGERS)} manager(s) added" in captured.out
 
 
@@ -444,3 +544,4 @@ def test_configure_shows_summary(db_path, capsys):
     assert "Registered custom managers" in captured.out
     assert "🔧" in captured.out
     assert "🗑️" in captured.out
+    assert "🔄" in captured.out

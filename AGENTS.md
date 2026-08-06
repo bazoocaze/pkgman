@@ -27,6 +27,9 @@ pkgman list                                          # list registered packages
 pkgman list --json                                   # list as JSON
 pkgman configure                                     # detect known managers, add interactively
 pkgman configure -y                                  # non-interactive: add all detected
+pkgman update git                                    # update package by name
+pkgman update git jq                                 # update multiple packages
+pkgman update -a                                     # update ALL packages from the database
 pkgman -f ~/my_database.json list                    # use an alternative database
 ```
 
@@ -34,17 +37,17 @@ pkgman -f ~/my_database.json list                    # use an alternative databa
 
 ```
 pkgman.py          → entry point + argparse
-commands.py        → orchestrator (install/remove/list/configure)
+commands.py        → orchestrator (install/remove/update/list/configure)
 database.py        → CRUD for ~/.config/.pkgman_database.json (v2 schema with managers)
 managers.py        → Manager (detection + execution of apt/yum/brew) and
                      ManagerRegistry + CustomManager (unified custom managers)
-constants.py       → enums (ManagerType, SudoSetting), DB_VERSION, DEFAULT_MANAGERS,
+constants.py       → enums (ManagerType, SudoSetting), DB_VERSION,
                      KNOWN_MANAGERS, RESERVED_MANAGERS
 cli.py             → argparse setup + handler dispatch (COMMAND_DISPATCH)
 output.py          → console formatting (Report, format_package_list, _snippet)
 ui.py              → interactive UI helpers (prompt_checkbox, print_manager_summary)
 runner.py          → ProcessRunner protocol + SubprocessRunner (subprocess.run wrapper)
-tests/             → pytest test suite (90 tests)
+tests/             → pytest test suite
 pyproject.toml     → build config + entry point (pkgman = "pkgman:main")
 ```
 
@@ -58,8 +61,7 @@ pyproject.toml     → build config + entry point (pkgman = "pkgman:main")
 | `ManagerType.PACKAGE`, `.AUTO` | `"package"`, `"auto"` |
 | `SudoSetting.YES`, `.NO` | `"yes"`, `"no"` |
 | `DB_VERSION` | Current schema version (2) |
-| `DEFAULT_MANAGERS` | `dict` — managers always present: (none by default) |
-| `KNOWN_MANAGERS` | `dict` — `name → (exe, install_cmd, remove_cmd)`. Used by `configure`. |
+| `KNOWN_MANAGERS` | `dict` — `name → {exe, install, remove, update}`. Used by `configure`. |
 | `RESERVED_MANAGERS` | `frozenset({"package", "auto"})` — forbidden as custom manager names |
 
 ### commands.py
@@ -74,6 +76,8 @@ Commands(db_path: str|Path = None, *, runner: ProcessRunner = None)
   .install(manager: str, name_or_names: str|list[str], source: str|None = None) -> None
   .install_all() -> None
   .remove(manager: str, name: str) -> None
+  .update(names: list[str]) -> None
+  .update_all() -> None
   .list(*, json_output: bool = False) -> None
   .configure(*, yes: bool = False) -> None
 
@@ -108,13 +112,15 @@ PackageStore(db: Database)
 Manager(name: str, *, runner: ProcessRunner = None)
   .install(package_name: str, *, sudo: bool = False) -> None
   .remove(package_name: str, *, sudo: bool = False) -> None
+  .update(package_name: str, *, sudo: bool = False) -> None
 
-CustomManager(name: str, install_cmd: list|str|None, remove_cmd: list|str|None)
+CustomManager(name: str, install_cmd: list|str|None, remove_cmd: list|str|None, update_cmd: list|str|None)
 
 ManagerRegistry(store, runner: ProcessRunner = SubprocessRunner())
   .get(manager_name: str) -> CustomManager|None
   .install(manager_name, name, source, *, sudo=False) -> None
   .remove(manager_name, name, source, *, sudo=False) -> None
+  .update(manager_name, name, source, *, sudo=False) -> None
   .resolve_auto(name_or_source: str) -> tuple[str, dict]|None
 
 detect_os_manager() -> Manager|None   # brew > apt > yum
@@ -141,17 +147,17 @@ format_package_list(packages: list[dict], *, json_output: bool = False) -> str
 
 ### ui.py
 ```
-prompt_checkbox(candidates: list[tuple[str, str, list|str, list|str|None]]) -> list
+prompt_checkbox(candidates: list[tuple[str, str, list|str, list|str|None, list|str|None]]) -> list
 print_manager_summary(managers: dict) -> None
 ```
 
 - `prompt_checkbox` — interactive numbered selection prompt for configure
-- `print_manager_summary` — prints registered custom managers with install/remove icons
+- `print_manager_summary` — prints registered custom managers with install/remove/update icons
 
 ### cli.py
 ```
 build_parser() -> ArgumentParser
-COMMAND_DISPATCH: dict[str, callable]   # {"install": ..., "remove": ..., "list": ..., "configure": ...}
+COMMAND_DISPATCH: dict[str, callable]   # {"install": ..., "remove": ..., "list": ..., "configure": ..., "update": ...}
 parse_install_args(args: list[str]) -> (manager, names|name, source|None)
 parse_remove_args(args: list[str]) -> (manager, name)
 ```
@@ -168,19 +174,21 @@ parse_remove_args(args: list[str]) -> (manager, name)
 
 Add entry to `KNOWN_MANAGERS` in `constants.py`:
 ```python
-"name": (
-    "executable",                              # checked via shutil.which()
-    ["cmd", "install", "{source}"],            # install template (list or string)
-    ["cmd", "remove", "{source}"],             # remove template (or None)
-),
+"name": {
+    "exe": "executable",                              # checked via shutil.which()
+    "install": ["cmd", "install", "{source}"],         # install template (list or string)
+    "remove": ["cmd", "remove", "{source}"],           # remove template (or None)
+    "update": ["cmd", "update", "{source}"],           # update template (or None)
+},
 ```
 For shell-pipe managers (e.g. `bash`, `zsh`), use a string install command:
 ```python
-"name": (
-    "executable",
-    "curl -fsSL {source} | executable",        # string → shell=True
-    None,                                       # None → database-only removal
-),
+"name": {
+    "exe": "executable",
+    "install": "curl -fsSL {source} | executable",    # string → shell=True
+    "remove": None,                                     # None → database-only removal
+    "update": None,                                     # None → no update command
+},
 ```
 
 ## Testing conventions
@@ -188,7 +196,7 @@ For shell-pipe managers (e.g. `bash`, `zsh`), use a string install command:
 |---|---|
 | Fixture `db_path` | Temp JSON file, auto-cleaned (`tests/conftest.py`) |
 | Fixture `empty_db` | Returns a ready-to-use `PackageStore` |
-| Mock install/remove | `patch.object(cmds.registry, "install")` / `"remove"` |
+| Mock install/remove/update | `patch.object(cmds.registry, "install")` / `"remove"` / `"update"` |
 | Mock PATH detection | `patch("commands.shutil.which", return_value=...)` |
 | Mock user input | `patch("builtins.input", return_value=...)` or `side_effect=[...]` |
 | Capture output | `capsys.readouterr()` (pytest built-in) |
@@ -214,9 +222,9 @@ File: `~/.config/.pkgman_database.json` (default) or custom via `-f`/`--file`
   "version": 2,
   "sudo": "no",
   "managers": {
-    "uv": {"install": ["uv", "tool", "install", "{source}"], "remove": ["uv", "tool", "uninstall", "{source}"]},
-    "bash": {"install": "curl -fsSL {source} | bash", "remove": null},
-    "zsh": {"install": "curl -fsSL {source} | zsh", "remove": null}
+    "uv": {"install": ["uv", "tool", "install", "{source}"], "remove": ["uv", "tool", "uninstall", "{source}"], "update": ["uv", "tool", "upgrade", "{source}"]},
+    "bash": {"install": "curl -fsSL {source} | bash", "remove": null, "update": null},
+    "zsh": {"install": "curl -fsSL {source} | zsh", "remove": null, "update": null}
   },
   "packages": [
     {"type": "package", "name": "git"},

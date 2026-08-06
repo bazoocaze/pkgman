@@ -6,16 +6,16 @@ from __future__ import annotations
 
 
 def prompt_checkbox(
-    candidates: list[tuple[str, str, list[str] | str, list[str] | str | None]],
-) -> list[tuple[str, str, list[str] | str, list[str] | str | None]]:
-    """Show a numbered checkbox list and return selected items.
+    labels: list[str],
+) -> list[int]:
+    """Show a numbered checkbox list and return selected indices (0-based).
 
     Input format: space- or comma-separated numbers, ranges (1-3),
     'all', or empty for none.  Repeat until valid.
     """
-    print(f"\nFound {len(candidates)} new manager(s):")
-    for i, (mgr_name, exe, _install, _remove) in enumerate(candidates, 1):
-        print(f"  [{i}] @{mgr_name:<14} ({exe})")
+    print(f"\nFound {len(labels)} new manager(s):")
+    for i, label in enumerate(labels, 1):
+        print(f"  [{i}] {label}")
     print()
     while True:
         answer = input(
@@ -24,7 +24,7 @@ def prompt_checkbox(
         if answer in ("", "none"):
             return []
         if answer == "all":
-            return candidates
+            return list(range(len(labels)))
         selected: list[int] = []
         try:
             for part in answer.replace(",", " ").split():
@@ -37,10 +37,10 @@ def prompt_checkbox(
             print(f"  Invalid input: '{answer}'. Try again.")
             continue
         selected = sorted(set(selected))
-        if not selected or selected[0] < 1 or selected[-1] > len(candidates):
-            print(f"  Numbers out of range (1-{len(candidates)}). Try again.")
+        if not selected or selected[0] < 1 or selected[-1] > len(labels):
+            print(f"  Numbers out of range (1-{len(labels)}). Try again.")
             continue
-        return [candidates[i - 1] for i in selected]
+        return [i - 1 for i in selected]
 
 
 def print_manager_summary(managers: dict) -> None:
@@ -58,4 +58,5 @@ def print_manager_summary(managers: dict) -> None:
         for name, cfg in sorted(custom_managers.items()):
             has_install = "🔧" if cfg.get("install") else "-"
             has_remove = "🗑️" if cfg.get("remove") else "-"
-            print(f"  @{name:<12} {has_install} install  {has_remove} remove")
+            has_update = "🔄" if cfg.get("update") else "-"
+            print(f"  @{name:<12} {has_install} install  {has_remove} remove  {has_update} update")

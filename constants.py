@@ -18,32 +18,33 @@ class SudoSetting(StrEnum):
 # Manager names that cannot be used as custom managers
 RESERVED_MANAGERS = frozenset({ManagerType.PACKAGE, ManagerType.AUTO})
 
-# Default custom managers bundled with pkgman
-DEFAULT_MANAGERS: dict[str, dict[str, list[str] | str | None]] = {}
-
 # Known managers that "configure" can detect and offer to add.
-# Maps manager name → (executable to check via which, install_cmd, remove_cmd).
-KNOWN_MANAGERS: dict[str, tuple[str, list[str] | str, list[str] | str | None]] = {
-    "bash": (
-        "bash",
-        "curl -fsSL {source} | bash",
-        None,
-    ),
-    "zsh": (
-        "zsh",
-        "curl -fsSL {source} | zsh",
-        None,
-    ),
-    "pi": (
-        "pi",
-        ["pi", "install", "{source}"],
-        ["pi", "remove", "{source}"],
-    ),
-    "uv": (
-        "uv",
-        ["uv", "tool", "install", "{source}"],
-        ["uv", "tool", "uninstall", "{source}"],
-    ),
+# Maps manager name → {exe, install, remove, update}.
+KNOWN_MANAGERS: dict[str, dict[str, str | list[str] | None]] = {
+    "bash": {
+        "exe": "bash",
+        "install": "curl -fsSL {source} | bash",
+        "remove": None,
+        "update": None,
+    },
+    "zsh": {
+        "exe": "zsh",
+        "install": "curl -fsSL {source} | zsh",
+        "remove": None,
+        "update": None,
+    },
+    "pi": {
+        "exe": "pi",
+        "install": ["pi", "install", "{source}"],
+        "remove": ["pi", "remove", "{source}"],
+        "update": ["pi", "update", "{source}"],
+    },
+    "uv": {
+        "exe": "uv",
+        "install": ["uv", "tool", "install", "{source}"],
+        "remove": ["uv", "tool", "uninstall", "{name}"],
+        "update": ["uv", "tool", "upgrade", "{name}"],
+    },
 }
 
 # Current database schema version

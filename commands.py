@@ -137,6 +137,56 @@ class Commands:
         self.store.remove(name)
         print(f"  -> {name} removed from database.")
 
+    # -- update ----------------------------------------------------------
+
+    def update(self, names: list[str]) -> None:
+        """Update one or more packages by name from the database."""
+        if not names:
+            print("No package names provided.")
+            return
+        for name in names:
+            pkg = self.store.find(name)
+            if pkg is None:
+                print(f"Warning: '{name}' not found in database. Skipping.")
+                continue
+            mgr = pkg["type"]
+            source = pkg.get("source", name)
+            sudo = self._sudo_for(mgr)
+            try:
+                self.registry.update(mgr, name, source, sudo=sudo)
+                print(f"  -> {name} updated.")
+            except subprocess.CalledProcessError as e:
+                print(f"  -> {name} update failed (exit {e.returncode}).")
+
+    def update_all(self) -> None:
+        """Update all packages from the database."""
+        packages = self.store.packages
+        if not packages:
+            print("No registered packages to update.")
+            return
+
+        report = Report()
+        for pkg in packages:
+            ptype = pkg["type"]
+            name = pkg["name"]
+            source = pkg.get("source", name)
+            sudo = self._sudo_for(ptype)
+            try:
+                self.registry.update(ptype, name, source, sudo=sudo)
+                report.add_ok(ptype.upper(), name, source)
+            except subprocess.CalledProcessError as e:
+                report.add_fail(
+                    ptype.upper(), name,
+                    detail=f"exit {e.returncode}",
+                    snippet=_snippet(stderr=e.stderr, stdout=e.stdout),
+                )
+            except Exception as e:
+                if isinstance(e, KeyboardInterrupt):
+                    raise
+                report.add_fail(ptype.upper(), name, detail=str(e))
+
+        report.print()
+
     # -- configure --------------------------------------------------------
 
     def configure(self, *, yes: bool = False) -> None:
@@ -151,15 +201,15 @@ class Commands:
         managers = self.store.managers
 
         # -- collect candidates ------------------------------------------
-        candidates: list[tuple[str, str, list[str] | str, list[str] | str | None]] = []
-        for mgr_name, (exe, install_cmd, remove_cmd) in KNOWN_MANAGERS.items():
+        candidates: list[tuple[str, dict]] = []
+        for mgr_name, mgr in KNOWN_MANAGERS.items():
             if mgr_name in managers:
                 print(f"Manager '@{mgr_name}' already registered — skipping.")
                 continue
-            if self._sys_check.which(exe) is None:
-                print(f"Manager '@{mgr_name}' ({exe!r}) not found on PATH — skipping.")
+            if self._sys_check.which(mgr["exe"]) is None:
+                print(f"Manager '@{mgr_name}' ({mgr['exe']!r}) not found on PATH — skipping.")
                 continue
-            candidates.append((mgr_name, exe, install_cmd, remove_cmd))
+            candidates.append((mgr_name, mgr))
 
         if not candidates:
             print("\nNo new managers found.")
@@ -170,14 +220,16 @@ class Commands:
         if yes:
             selected = candidates
         else:
-            selected = prompt_checkbox(candidates)
+            labels = [f"@{name:<14} ({mgr['exe']})" for name, mgr in candidates]
+            selected = [candidates[i] for i in prompt_checkbox(labels)]
 
         # -- add ---------------------------------------------------------
         added = 0
-        for mgr_name, _exe, install_cmd, remove_cmd in selected:
+        for mgr_name, mgr in selected:
             managers[mgr_name] = {
-                "install": install_cmd,
-                "remove": remove_cmd,
+                "install": mgr["install"],
+                "remove": mgr["remove"],
+                "update": mgr["update"],
             }
             added += 1
             print(f"  -> '@{mgr_name}' added.")

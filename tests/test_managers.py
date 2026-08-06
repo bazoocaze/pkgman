@@ -49,9 +49,17 @@ class TestManager:
         m = Manager("apt")
         assert m._build_cmd("remove", "git") == ["apt", "remove", "-y", "git"]
 
+    def test_apt_update_command(self):
+        m = Manager("apt")
+        assert m._build_update_cmd("git") == ["apt", "install", "--only-upgrade", "-y", "git"]
+
     def test_yum_install_command(self):
         m = Manager("yum")
         assert m._build_cmd("install", "git") == ["yum", "install", "-y", "git"]
+
+    def test_yum_update_command(self):
+        m = Manager("yum")
+        assert m._build_update_cmd("git") == ["yum", "update", "-y", "git"]
 
     def test_brew_install_command(self):
         m = Manager("brew")
@@ -61,6 +69,10 @@ class TestManager:
         m = Manager("brew")
         assert m._build_cmd("remove", "git") == ["brew", "uninstall", "git"]
 
+    def test_brew_update_command(self):
+        m = Manager("brew")
+        assert m._build_update_cmd("git") == ["brew", "upgrade", "git"]
+
     def test_sudo_prefix(self):
         cmd = ["sudo"] + ["apt", "install", "-y", "git"]
         assert cmd == ["sudo", "apt", "install", "-y", "git"]
@@ -69,6 +81,11 @@ class TestManager:
         m = Manager("nope")
         with pytest.raises(ValueError, match="Unknown manager"):
             m._build_cmd("install", "x")
+
+    def test_unknown_manager_update_raises(self):
+        m = Manager("nope")
+        with pytest.raises(ValueError, match="Unknown manager"):
+            m._build_update_cmd("x")
 
 
 # =========================================================================
@@ -81,10 +98,12 @@ class TestCustomManager:
             name="foobar",
             install_cmd=["foobar", "install", "{source}"],
             remove_cmd=["foobar", "remove", "{source}"],
+            update_cmd=["foobar", "update", "{name}"],
         )
         assert cm.name == "foobar"
         assert cm.install_cmd == ["foobar", "install", "{source}"]
         assert cm.remove_cmd == ["foobar", "remove", "{source}"]
+        assert cm.update_cmd == ["foobar", "update", "{name}"]
 
     def test_none_remove(self):
         cm = CustomManager(
@@ -94,6 +113,22 @@ class TestCustomManager:
         )
         assert cm.install_cmd == "curl -fsSL {source} | bash"
         assert cm.remove_cmd is None
+        assert cm.update_cmd is None
+
+    def test_from_dict_with_update(self):
+        cm = CustomManager.from_dict("foobar", {
+            "install": ["foobar", "install", "{source}"],
+            "remove": ["foobar", "remove", "{source}"],
+            "update": ["foobar", "update", "{name}"],
+        })
+        assert cm.update_cmd == ["foobar", "update", "{name}"]
+
+    def test_from_dict_without_update(self):
+        cm = CustomManager.from_dict("foobar", {
+            "install": ["foobar", "install", "{source}"],
+            "remove": ["foobar", "remove", "{source}"],
+        })
+        assert cm.update_cmd is None
 
 
 # =========================================================================
@@ -218,4 +253,24 @@ class TestCustomManagerExecution:
         reg = ManagerRegistry(store, runner=mock_runner)
         # Should not raise – null remove_cmd means DB-only removal
         reg.remove("foobar", "sdkman", "https://get.sdkman.io")
+        mock_runner.run.assert_not_called()
+
+    def test_registry_update_custom(self):
+        mock_runner = self._make_mock_runner()
+        store = _make_store(managers={
+            "foobar": {"install": ["foobar", "install", "{source}"],
+                       "remove": ["foobar", "remove", "{source}"],
+                       "update": ["foobar", "update", "{name}"]},
+        })
+        reg = ManagerRegistry(store, runner=mock_runner)
+        reg.update("foobar", "ruff", "github:astral-sh/ruff")
+        mock_runner.run.assert_called_once_with(["foobar", "update", "ruff"], shell=False)
+
+    def test_registry_update_null_cmd_is_noop(self):
+        mock_runner = self._make_mock_runner()
+        store = _make_store(managers={
+            "foobar": {"install": "curl {source}", "remove": None, "update": None},
+        })
+        reg = ManagerRegistry(store, runner=mock_runner)
+        reg.update("foobar", "sdkman", "https://get.sdkman.io")
         mock_runner.run.assert_not_called()
