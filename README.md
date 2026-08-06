@@ -34,6 +34,13 @@ pkgman remove git                                    # @auto: finds package by n
 pkgman remove @pi name                               # explicit manager
 pkgman list                                          # list registered packages
 pkgman list --json                                   # list as JSON
+pkgman configure                                     # detect known managers, add interactively
+pkgman configure -y                                  # non-interactive: add all detected
+pkgman update git                                    # update package by name
+pkgman update git jq                                 # update multiple packages
+pkgman update -a                                     # update ALL packages from the database
+pkgman update @pi -a                                 # update ALL packages from @pi manager only
+pkgman update @pi nome                               # update package under @pi manager
 pkgman update @pi nome                               # update package under @pi manager
 pkgman doctor                                        # run diagnostic checks
 pkgman -V, --version                                 # show version and exit
