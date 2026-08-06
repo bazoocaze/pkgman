@@ -98,6 +98,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Add all detected managers without prompting",
     )
 
+    # doctor
+    doctor_parser = subparsers.add_parser("doctor", help="Run diagnostic checks on the database and environment")
+
     # update
     update_parser = subparsers.add_parser("update", help="Update one or more packages")
     update_parser.add_argument(
@@ -146,6 +149,12 @@ def _handle_configure(cmds: Commands, args: argparse.Namespace) -> None:
     cmds.configure(yes=args.yes)
 
 
+def _handle_doctor(cmds: Commands, args: argparse.Namespace) -> None:
+    ok = cmds.doctor()
+    if not ok:
+        sys.exit(1)
+
+
 def _handle_update(cmds: Commands, args: argparse.Namespace) -> None:
     names = args.names
     manager = None
@@ -170,4 +179,5 @@ COMMAND_DISPATCH: dict[str, callable] = {
     "list": _handle_list,
     "configure": _handle_configure,
     "update": _handle_update,
+    "doctor": _handle_doctor,
 }

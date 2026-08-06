@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.8] - 2026-08-05
+
+### Added
+
+- New `pkgman doctor` command: diagnostic checks for database integrity, OS manager detection, manager executability on PATH, duplicate package names, and type-to-manager alignment.
+- New module: `command_doctor.py` with `DoctorReport` and `run_doctor()`.
+
 ## [2.2.7] - 2026-08-05
 
 ### Added

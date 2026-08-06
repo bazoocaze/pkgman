@@ -259,6 +259,16 @@ class Commands:
         # -- summary ------------------------------------------------------
         print_manager_summary(managers)
 
+    # -- doctor ----------------------------------------------------------
+
+    def doctor(self) -> bool:
+        """Run diagnostic checks and return True if no errors found."""
+        from command_doctor import run_doctor
+
+        report = run_doctor(self.store, self._sys_check)
+        report.print()
+        return not report.has_errors
+
     # -- list ------------------------------------------------------------
 
     def list(self, *, json_output: bool = False) -> None:

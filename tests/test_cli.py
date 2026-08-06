@@ -369,3 +369,35 @@ def test_update_at_manager_name_mismatch(db_path):
     r = run("-f", db_path, "update", "@pi", "ruff")
     assert r.returncode == 0
     assert "not found under '@pi'" in r.stdout
+
+
+# -- doctor --------------------------------------------------------------
+
+
+def test_doctor_help():
+    r = run("doctor", "-h")
+    assert r.returncode == 0
+
+
+def test_doctor_all_ok(db_path):
+    data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    r = run("-f", db_path, "doctor")
+    assert r.returncode == 0
+    assert "Database: valid JSON" in r.stdout
+
+
+def test_doctor_with_errors(db_path):
+    data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+
+    class NoManagerSysCheck:
+        @staticmethod
+        def which(executable: str) -> str | None:
+            return None
+
+    r = run("-f", db_path, "doctor", sys_check=NoManagerSysCheck())
+    assert r.returncode == 1
+    assert "No OS package manager detected" in r.stdout

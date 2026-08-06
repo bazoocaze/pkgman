@@ -61,6 +61,12 @@ class _Colors:
         return ""
 
     @staticmethod
+    def WARN() -> str:
+        if _Colors._enabled():
+            return "\033[93m\033[1m"
+        return ""
+
+    @staticmethod
     def SNIPPET() -> str:
         if _Colors._enabled():
             return "\033[93m"
