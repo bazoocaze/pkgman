@@ -34,6 +34,8 @@ pkgman remove git                                    # @auto: finds package by n
 pkgman remove @pi name                               # explicit manager
 pkgman list                                          # list registered packages
 pkgman list --json                                   # list as JSON
+pkgman update @pi nome                               # update package under @pi manager
+pkgman doctor                                        # run diagnostic checks
 pkgman -V, --version                                 # show version and exit
 pkgman -f ~/my_database.json list                    # use an alternative database
 ```
@@ -42,7 +44,8 @@ pkgman -f ~/my_database.json list                    # use an alternative databa
 
 ```
 pkgman.py          entry point + argparse
-commands.py        orchestrator (install/remove/list)
+commands.py        orchestrator (install/remove/update/list/configure/doctor)
+command_doctor.py  diagnostic checks (database, managers, packages)
 database.py        CRUD for ~/.config/.pkgman_database.json
 managers.py        Manager (detection + execution of apt/yum/brew) and
                    ManagerRegistry + CustomManager (unified custom managers)
@@ -67,13 +70,14 @@ commands with `sudo`. Custom managers are **not** affected by the sudo setting
 
 ## Supported managers
 
-| Manager | Detect | Install | Remove |
+| Manager | Detect | Install | Remove | Update |
+|---|---|---|---|---|---|
 |---|---|---|---|---|
-| brew | `which brew` | `brew install` | `brew uninstall` |
-| apt  | `which apt`  | `apt install -y` | `apt remove -y` |
-| yum  | `which yum`  | `yum install -y` | `yum remove -y` |
-| bash | `which bash` | `curl ... \| bash` | database-only |
-| zsh  | `which zsh`  | `curl ... \| zsh`  | database-only |
+| brew | `which brew` | `brew install` | `brew uninstall` | `brew upgrade` |
+| apt  | `which apt`  | `apt install -y` | `apt remove -y` | `apt install --only-upgrade -y` |
+| yum  | `which yum`  | `yum install -y` | `yum remove -y` | `yum update -y` |
+| bash | `which bash` | `curl ... \| bash` | database-only | database-only |
+| zsh  | `which zsh`  | `curl ... \| zsh`  | database-only | database-only |
 
 ## Database
 
@@ -143,7 +147,7 @@ uv run pytest tests/
 ```
 
 Covers database CRUD, manager command building, Commands orchestration, CLI
-argument parsing, and custom manager execution (90+ checks).
+argument parsing, custom manager execution, and diagnostic checks (100+ checks).
 
 ## License
 
