@@ -147,10 +147,16 @@ def _handle_configure(cmds: Commands, args: argparse.Namespace) -> None:
 
 
 def _handle_update(cmds: Commands, args: argparse.Namespace) -> None:
+    names = args.names
+    manager = None
+    if names and names[0].startswith("@"):
+        manager = names[0][1:]
+        names = names[1:]
+
     if args.all:
-        cmds.update_all()
-    elif args.names:
-        cmds.update(args.names)
+        cmds.update_all(manager=manager)
+    elif names:
+        cmds.update(names, manager=manager)
     else:
         print("update: error: the following arguments are required: NAME or -a/--all", file=sys.stderr)
         sys.exit(1)

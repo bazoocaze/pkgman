@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.2.7] - 2026-08-05
+
+### Added
+
+- `pkgman update @manager -a` now filters updates to packages of that manager type only.
+- `pkgman update @manager name` updates a specific package, verifying it belongs to the given manager.
+- `update()` and `update_all()` in `Commands` accept optional `manager` parameter for programmatic filtering.
+
 ## [2.2.6] - 2026-08-05
 
 ### Added

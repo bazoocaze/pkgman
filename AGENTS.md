@@ -30,6 +30,8 @@ pkgman configure -y                                  # non-interactive: add all 
 pkgman update git                                    # update package by name
 pkgman update git jq                                 # update multiple packages
 pkgman update -a                                     # update ALL packages from the database
+pkgman update @pi -a                                 # update ALL packages from @pi manager only
+pkgman update @pi nome                               # update package under @pi manager
 pkgman -f ~/my_database.json list                    # use an alternative database
 ```
 
@@ -76,8 +78,8 @@ Commands(db_path: str|Path = None, *, runner: ProcessRunner = None)
   .install(manager: str, name_or_names: str|list[str], source: str|None = None) -> None
   .install_all() -> None
   .remove(manager: str, name: str) -> None
-  .update(names: list[str]) -> None
-  .update_all() -> None
+  .update(names: list[str], *, manager: str|None = None) -> None
+  .update_all(*, manager: str|None = None) -> None
   .list(*, json_output: bool = False) -> None
   .configure(*, yes: bool = False) -> None
 

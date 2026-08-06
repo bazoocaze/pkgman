@@ -139,8 +139,11 @@ class Commands:
 
     # -- update ----------------------------------------------------------
 
-    def update(self, names: list[str]) -> None:
-        """Update one or more packages by name from the database."""
+    def update(self, names: list[str], manager: str | None = None) -> None:
+        """Update one or more packages by name from the database.
+
+        If *manager* is given, only packages whose type matches it are updated.
+        """
         if not names:
             print("No package names provided.")
             return
@@ -148,6 +151,9 @@ class Commands:
             pkg = self.store.find(name)
             if pkg is None:
                 print(f"Warning: '{name}' not found in database. Skipping.")
+                continue
+            if manager is not None and pkg["type"] != manager:
+                print(f"Warning: '{name}' not found under '@{manager}'. Skipping.")
                 continue
             mgr = pkg["type"]
             source = pkg.get("source", name)
@@ -158,11 +164,21 @@ class Commands:
             except subprocess.CalledProcessError as e:
                 print(f"  -> {name} update failed (exit {e.returncode}).")
 
-    def update_all(self) -> None:
-        """Update all packages from the database."""
+    def update_all(self, manager: str | None = None) -> None:
+        """Update all packages from the database.
+
+        If *manager* is given, only packages of that type are updated.
+        """
         packages = self.store.packages
+        if manager is not None:
+            packages = [p for p in packages if p["type"] == manager]
         if not packages:
-            print("No registered packages to update.")
+            msg = (
+                f"No registered packages for '@{manager}' to update."
+                if manager
+                else "No registered packages to update."
+            )
+            print(msg)
             return
 
         report = Report()

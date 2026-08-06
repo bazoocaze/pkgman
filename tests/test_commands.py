@@ -388,6 +388,82 @@ def test_update_all_partial_fail(db_path, capsys):
     assert "Summary: 1 succeeded, 1 failed" in captured.out
 
 
+def test_update_all_with_manager_filter(db_path, capsys):
+    """update_all(manager='pi') only updates packages of that type."""
+    data = {
+        "version": 2, "sudo": "no", "managers": {},
+        "packages": [
+            {"type": "package", "name": "git"},
+            {"type": "pi", "name": "golang", "source": "https://go.dev"},
+            {"type": "pi", "name": "node", "source": "https://nodejs.org"},
+            {"type": "uv", "name": "ruff"},
+        ],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    cmds = Commands(db_path=db_path)
+    with patch.object(cmds.registry, "update") as mock_update:
+        cmds.update_all(manager="pi")
+    assert mock_update.call_count == 2
+    captured = capsys.readouterr()
+    assert "PI" in captured.out
+    assert "PACKAGE" not in captured.out
+    assert "UV" not in captured.out
+
+
+def test_update_all_with_manager_empty(db_path, capsys):
+    """update_all(manager='pi') warns when no packages of that type."""
+    data = {
+        "version": 2, "sudo": "no", "managers": {},
+        "packages": [
+            {"type": "package", "name": "git"},
+        ],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    cmds = Commands(db_path=db_path)
+    cmds.update_all(manager="pi")
+    captured = capsys.readouterr()
+    assert "No registered packages for '@pi' to update" in captured.out
+
+
+def test_update_with_manager_match(db_path, capsys):
+    """update(name, manager='pi') updates package when type matches."""
+    data = {
+        "version": 2, "sudo": "no", "managers": {},
+        "packages": [
+            {"type": "pi", "name": "golang", "source": "https://go.dev"},
+            {"type": "uv", "name": "ruff"},
+        ],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    cmds = Commands(db_path=db_path)
+    with patch.object(cmds.registry, "update") as mock_update:
+        cmds.update(["golang"], manager="pi")
+    mock_update.assert_called_once_with("pi", "golang", "https://go.dev", sudo=False)
+    captured = capsys.readouterr()
+    assert "golang updated" in captured.out
+
+
+def test_update_with_manager_mismatch(db_path, capsys):
+    """update(name, manager='pi') warns when package type mismatch."""
+    data = {
+        "version": 2, "sudo": "no", "managers": {},
+        "packages": [
+            {"type": "uv", "name": "ruff"},
+        ],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    cmds = Commands(db_path=db_path)
+    with patch.object(cmds.registry, "update") as mock_update:
+        cmds.update(["ruff"], manager="pi")
+    mock_update.assert_not_called()
+    captured = capsys.readouterr()
+    assert "not found under '@pi'" in captured.out
+
+
 # -- configure ----------------------------------------------------------
 
 

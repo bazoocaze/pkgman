@@ -313,3 +313,59 @@ def test_update_all_parses(db_path):
         json.dump(data, f)
     r = run("-f", db_path, "update", "-a")
     assert r.returncode != 2
+
+
+def test_update_at_manager_all(db_path):
+    """pkgman update @pi -a only updates packages of type pi."""
+    data = {
+        "version": 2, "sudo": "no", "managers": {},
+        "packages": [
+            {"type": "package", "name": "git"},
+            {"type": "pi", "name": "golang", "source": "https://go.dev"},
+            {"type": "uv", "name": "ruff"},
+        ],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    r = run("-f", db_path, "update", "@pi", "-a")
+    assert r.returncode == 0
+    assert "PI" in r.stdout
+    assert "PACKAGE" not in r.stdout
+    assert "UV" not in r.stdout
+
+
+def test_update_at_manager_name(db_path):
+    """pkgman update @pi name updates the matching package only."""
+    data = {
+        "version": 2, "sudo": "no", "managers": {
+            "pi": {"install": ["echo"], "remove": ["echo"], "update": ["echo"]},
+        },
+        "packages": [
+            {"type": "pi", "name": "golang", "source": "https://go.dev"},
+            {"type": "package", "name": "git"},
+        ],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    r = run("-f", db_path, "update", "@pi", "golang")
+    assert r.returncode == 0
+    assert "golang updated" in r.stdout
+    assert "git updated" not in r.stdout
+
+
+def test_update_at_manager_name_mismatch(db_path):
+    """pkgman update @pi name warns when package is not of that type."""
+    data = {
+        "version": 2, "sudo": "no", "managers": {
+            "pi": {"install": ["echo"], "remove": ["echo"], "update": ["echo"]},
+            "uv": {"install": ["echo"], "remove": ["echo"], "update": ["echo"]},
+        },
+        "packages": [
+            {"type": "uv", "name": "ruff"},
+        ],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    r = run("-f", db_path, "update", "@pi", "ruff")
+    assert r.returncode == 0
+    assert "not found under '@pi'" in r.stdout
