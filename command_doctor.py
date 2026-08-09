@@ -111,6 +111,7 @@ def run_doctor(store: Any, sys_check: Any) -> DoctorReport:
     _check_os_manager(report, sys_check)
     _check_managers_path(report, store, sys_check)
     _check_duplicate_names(report, store)
+    _check_duplicate_identifiers(report, store)
     _check_type_vs_manager(report, store)
 
     return report
@@ -190,6 +191,41 @@ def _check_duplicate_names(report: DoctorReport, store: Any) -> None:
             report.warn(f"Duplicate package name: '{name}'")
     else:
         report.ok("No duplicate package names")
+
+
+def _check_duplicate_identifiers(report: DoctorReport, store: Any) -> None:
+    """Check for duplicate name/source values within the same manager.
+
+    For each manager (type), warns if any value appears as ``name`` or
+    ``source`` in more than one package.  This catches:
+
+    - Same name in two packages of the same manager
+    - Same source in two packages of the same manager
+    - A package's name matching another package's source (and vice-versa)
+    """
+    # Group packages by type
+    by_type: dict[str, list[dict]] = {}
+    for pkg in store.packages:
+        ptype = pkg.get("type", "package")
+        by_type.setdefault(ptype, []).append(pkg)
+
+    for ptype in sorted(by_type):
+        packages = by_type[ptype]
+        # value -> list of (pkg_name, field)
+        value_map: dict[str, list[tuple[str, str]]] = {}
+        for pkg in packages:
+            name = pkg["name"]  # name is required
+            src = pkg.get("source")
+            value_map.setdefault(name, []).append((name, "name"))
+            if src is not None and src != name:
+                value_map.setdefault(src, []).append((name, "source"))
+
+        for value in sorted(value_map):
+            entries = value_map[value]
+            # Only warn if value appears in more than one distinct package
+            if len({e[0] for e in entries}) > 1:
+                desc = "; ".join(f"{f} of '{n}'" for n, f in entries)
+                report.warn(f"@{ptype}: '{value}' — {desc}")
 
 
 def _check_type_vs_manager(report: DoctorReport, store: Any) -> None:

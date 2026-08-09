@@ -30,7 +30,7 @@ wheels = [
 
 [[package]]
 name = "pkgman"
-version = "2.2.6"
+version = "2.2.8"
 source = { editable = "." }
 
 [package.dev-dependencies]
