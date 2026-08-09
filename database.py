@@ -166,6 +166,16 @@ class PackageStore:
         self._packages.append(package)
         self.save()
 
+    def update_source(self, name: str, source: str) -> None:
+        """Update the source of an existing package identified by name."""
+        self._ensure_loaded()
+        for pkg in self._packages:
+            if pkg["name"] == name:
+                pkg["source"] = source
+                self.save()
+                return
+        raise ValueError(f"Package '{name}' not found")
+
     def remove(self, name: str) -> None:
         """Remove a package by name from the store."""
         self._ensure_loaded()

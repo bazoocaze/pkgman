@@ -5,6 +5,7 @@ commands.py – orchestrates install, remove, list, and configure commands.
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 
 from constants import KNOWN_MANAGERS, ManagerType, SudoSetting
@@ -68,13 +69,64 @@ class Commands:
 
     def _install_single(self, manager: str, name: str, source: str | None) -> None:
         source = source or name
-        print(f"Installing {manager} package: {name}")
+        has_explicit_source = source != name
+
         sudo = self._sudo_for(manager)
-        if source != name:
+
+        # Check for conflicts with existing packages of the same type
+        for pkg in self.store.packages:
+            if pkg["type"] != manager:
+                continue
+
+            existing_name = pkg["name"]
+            existing_source = pkg.get("source")  # None if not stored
+
+            # Case 1: same type+source (explicit), different name -> error
+            if has_explicit_source and existing_source == source and existing_name != name:
+                print(
+                    f"Error: package '{name}' has the same source '{source}' "
+                    f"as existing package '{existing_name}' of '@{manager}'",
+                    file=sys.stderr,
+                )
+                return
+
+            if existing_name != name:
+                continue
+
+            # Same name cases ————————————————
+
+            # Cases 3 & 5: run install but don't touch database
+            # Use the stored source (if any) so {source} substitution is correct
+            if not has_explicit_source or existing_source == source:
+                run_source = existing_source or source
+                print(f"  -> {name} already registered. Reinstalling.")
+                self.registry.install(manager, name, run_source, sudo=sudo)
+                return
+
+            # New install has an explicit source ————————————————
+
+            if existing_source is None:
+                # Case 2: upgrade name-only -> name+source
+                print(f"  -> {name} updated with source: {source}")
+                self.registry.install(manager, name, source, sudo=sudo)
+                self.store.update_source(name, source)
+                return
+
+            # Case 4: same name, different source -> error
+            print(
+                f"Error: package '{name}' already registered with source "
+                f"'{existing_source}', refusing to overwrite",
+                file=sys.stderr,
+            )
+            return
+
+        # No conflict -> proceed with install
+        print(f"Installing {manager} package: {name}")
+        if has_explicit_source:
             print(f"  Source: {source}")
         self.registry.install(manager, name, source, sudo=sudo)
         entry: dict = {"type": manager, "name": name}
-        if source != name:
+        if has_explicit_source:
             entry["source"] = source
         self.store.add(entry)
         print(f"  -> {name} installed and registered.")
