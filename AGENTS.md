@@ -102,6 +102,7 @@ PackageStore(db: Database)
   .save() -> None           # persist to disk
   .add(package: dict) -> None     # ignore duplicates by name; auto-saves
   .remove(name: str) -> None      # auto-saves
+  .update_source(name: str, source: str) -> None  # add/update source on existing package; auto-saves
   .find(name: str) -> dict|None
   .find_by_source(source: str) -> dict|None
 
@@ -169,6 +170,16 @@ DoctorReport()
   .print() -> None
 
 run_doctor(store: PackageStore, sys_check: SysCheck) -> DoctorReport
+
+Checks included:
+- Database file exists, valid JSON, correct schema version
+- OS package manager detection (apt/yum/brew)
+- Registered manager executables on PATH
+- Duplicate package names (global)
+- **Duplicate name/source identifiers per manager** — warns when
+  the same value appears as `name` or `source` in more than one
+  package of the same manager type
+- Package type-to-manager alignment
 ```
 
 ### cli.py
@@ -178,6 +189,23 @@ COMMAND_DISPATCH: dict[str, callable]   # {"install": ..., "remove": ..., "list"
 parse_install_args(args: list[str]) -> (manager, names|name, source|None)
 parse_remove_args(args: list[str]) -> (manager, name)
 ```
+
+## Install conflict rules
+
+When installing a package, `_install_single` checks for conflicts
+against existing packages of the same manager type:
+
+| # | Scenario | Action |
+|---|---|---|
+| 1 | Same `type`+`source` (both explicit), different `name` | **Error** — no command run |
+| 2 | Same `type`+`name`, existing has **no** `source`, new has explicit `source` | **Upgrade** — runs install with new source, updates DB |
+| 3 | Same `type`+`name`+`source` (exact match) | **Reinstall** — runs install, DB untouched |
+| 4 | Same `type`+`name`, existing has `source`, new has **different** `source` | **Error** — no command run |
+| 5 | Same `type`+`name`, existing has `source`, new has **no** `source` | **Reinstall** — runs install with stored source, DB untouched |
+| — | No conflict | **Add** — runs install, registers in DB |
+
+For reinstalls (cases 3 & 5), the stored `source` value (if any) is
+used for `{source}` template substitution, not the implicit name.
 
 ---
 

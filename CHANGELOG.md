@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.2.9] - 2026-08-05
+
+### Added
+
+- `pkgman doctor`: new check `_check_duplicate_identifiers` — warns when the
+  same value appears as `name` or `source` in more than one package of the
+  same manager type (cross-field, name-vs-source included).
+- `PackageStore.update_source(name, source)` — add or update source on an
+  existing package by name.
+
+### Changed
+
+- `pkgman install` now protects against duplicate `type`+`source` entries:
+  errors on conflicting name/source, silently reinstalls when already
+  registered, and allows upgrade from name-only to name+source.
+
 ## [2.2.8] - 2026-08-05
 
 ### Added
