@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-.venv/bin/python3 pkgman.py "$@"
+uv run python pkgman.py "$@"
