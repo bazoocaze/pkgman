@@ -61,6 +61,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to the database file (default: ~/.config/.pkgman_database.json)",
     )
     parser.add_argument(
+        "-n", "--no-run",
+        action="store_true",
+        dest="no_run",
+        help="Update the database but do not execute external commands",
+    )
+    parser.add_argument(
         "-V", "--version",
         action="store_true",
         help="Show version and exit",

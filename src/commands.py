@@ -12,7 +12,7 @@ from src.constants import KNOWN_MANAGERS, ManagerType, SudoSetting
 from src.database import Database, PackageStore
 from src.managers import ManagerRegistry
 from src.output import Report, _snippet, format_package_list
-from src.runner import ProcessRunner, SubprocessRunner
+from src.runner import DryRunRunner, ProcessRunner, SubprocessRunner
 from src.sys_check import RealSysCheck, SysCheck
 from src.ui import print_manager_summary, prompt_checkbox
 
@@ -26,14 +26,16 @@ class Commands:
         *,
         runner: ProcessRunner | None = None,
         sys_check: SysCheck | None = None,
+        dry_run: bool = False,
     ) -> None:
         self._db = Database(db_path)
         self.store = PackageStore(self._db)
         self.store.load()               # prime cache + migrate if needed
         self._sys_check = sys_check or RealSysCheck()
+        actual_runner = runner or (DryRunRunner() if dry_run else SubprocessRunner())
         self.registry = ManagerRegistry(
             self.store,
-            runner=runner or SubprocessRunner(),
+            runner=actual_runner,
             sys_check=self._sys_check,
         )
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.2.11] - 2026-08-20
+
+### Added
+
+- `--no-run` / `-n` global flag: update the database but do not execute external
+  commands. Commands are printed as `(no-run) would execute: <cmd>`.
+  Works with install, remove, update, list, configure, doctor.
+- `DryRunRunner` in `src/runner.py`: no-op runner that logs commands.
+
 ## [2.2.10] - 2026-08-19
 
 ### Changed

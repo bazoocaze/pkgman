@@ -42,7 +42,7 @@ def main(
         sys.stdout.flush()
         sys.exit(1)
 
-    cmds = Commands(db_path=args.file, sys_check=sys_check)
+    cmds = Commands(db_path=args.file, sys_check=sys_check, dry_run=args.no_run)
     handler = COMMAND_DISPATCH[args.command]
     handler(cmds, args)
 

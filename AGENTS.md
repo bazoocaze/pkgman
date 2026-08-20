@@ -33,6 +33,9 @@ pkgman update -a                                     # update ALL packages from 
 pkgman update @pi -a                                 # update ALL packages from @pi manager only
 pkgman update @pi nome                               # update package under @pi manager
 pkgman doctor                                        # run diagnostic checks
+pkgman -n install git jq                             # dry run: update DB only, no external commands
+pkgman -n remove git                                 # dry run: remove from DB, skip external commands
+pkgman -n install -a                                 # dry run: replay DB without executing
 pkgman -f ~/my_database.json list                    # use an alternative database
 ```
 
@@ -50,7 +53,7 @@ src/               → package with all modules
   managers.py      → Manager (detection + execution of apt/yum/brew) and
                       ManagerRegistry + CustomManager (unified custom managers)
   output.py        → console formatting (Report, format_package_list, _snippet)
-  runner.py        → ProcessRunner protocol + SubprocessRunner
+  runner.py        → ProcessRunner protocol + SubprocessRunner + DryRunRunner
   sys_check.py     → SysCheck abstraction (which checks)
   ui.py            → interactive UI helpers (prompt_checkbox, print_manager_summary)
 tests/             → pytest test suite
@@ -78,7 +81,7 @@ pyproject.toml     → build config + entry point (pkgman = "pkgman:main")
 
 ### src.commands
 ```
-Commands(db_path: str|Path = None, *, runner: ProcessRunner = None)
+Commands(db_path: str|Path = None, *, runner: ProcessRunner = None, dry_run: bool = False)
 
   # properties
   .store: PackageStore      # the loaded DB cache
@@ -147,6 +150,7 @@ ProcessRunner (Protocol)
   .run(cmd: list[str]|str, *, shell: bool = False) -> None
 
 SubprocessRunner()           # real impl; raises CalledProcessError on failure
+DryRunRunner()               # no-op runner for --no-run; prints commands instead of executing
 ```
 
 ### src.output

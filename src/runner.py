@@ -26,6 +26,15 @@ class ProcessRunner(Protocol):
 # ---------------------------------------------------------------------------
 
 @dataclass
+class DryRunRunner(ProcessRunner):
+    """Logs the command but does not execute it. Used for --no-run."""
+
+    def run(self, cmd: list[str] | str, *, shell: bool = False) -> None:
+        label = cmd if isinstance(cmd, str) else " ".join(cmd)
+        print(f"  (no-run) would execute: {label}")
+
+
+@dataclass
 class SubprocessRunner(ProcessRunner):
     """Runs commands via ``subprocess.run``."""
 

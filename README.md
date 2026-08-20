@@ -41,8 +41,10 @@ pkgman update git jq                                 # update multiple packages
 pkgman update -a                                     # update ALL packages from the database
 pkgman update @pi -a                                 # update ALL packages from @pi manager only
 pkgman update @pi nome                               # update package under @pi manager
-pkgman update @pi nome                               # update package under @pi manager
 pkgman doctor                                        # run diagnostic checks
+pkgman -n install git jq                             # dry run: update DB only, no external commands
+pkgman -n remove git                                 # dry run: remove from DB, skip external commands
+pkgman -n install -a                                 # dry run: replay DB without executing
 pkgman -V, --version                                 # show version and exit
 pkgman -f ~/my_database.json list                    # use an alternative database
 ```
@@ -65,9 +67,11 @@ The order of operations is always:
 2. If it fails → database is **not** modified
 3. If OK → update `~/.config/.pkgman_database.json`
 
-The database file is portable between Linux and macOS — the OS manager is
-detected automatically at runtime based on what's available (brew > apt > yum).
-Custom managers (defined in JSON) work identically on any platform.
+The `-n` / `--no-run` flag can be used with any command to simulate execution:
+update the database but do **not** run external commands (apt, brew, uv tool install, etc.).
+External commands are printed as `(no-run) would execute: <cmd>` instead.
+
+The database file is portable between Linux and macOS
 
 ## Sudo
 
