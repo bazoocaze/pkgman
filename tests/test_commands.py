@@ -5,8 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
-from commands import Commands
-from constants import KNOWN_MANAGERS
+from src.commands import Commands
+from src.constants import KNOWN_MANAGERS
 
 
 

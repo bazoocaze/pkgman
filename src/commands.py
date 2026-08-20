@@ -8,13 +8,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-from constants import KNOWN_MANAGERS, ManagerType, SudoSetting
-from database import Database, PackageStore
-from managers import ManagerRegistry
-from output import Report, _snippet, format_package_list
-from runner import ProcessRunner, SubprocessRunner
-from sys_check import RealSysCheck, SysCheck
-from ui import print_manager_summary, prompt_checkbox
+from src.constants import KNOWN_MANAGERS, ManagerType, SudoSetting
+from src.database import Database, PackageStore
+from src.managers import ManagerRegistry
+from src.output import Report, _snippet, format_package_list
+from src.runner import ProcessRunner, SubprocessRunner
+from src.sys_check import RealSysCheck, SysCheck
+from src.ui import print_manager_summary, prompt_checkbox
 
 
 class Commands:
@@ -315,7 +315,7 @@ class Commands:
 
     def doctor(self) -> bool:
         """Run diagnostic checks and return True if no errors found."""
-        from command_doctor import run_doctor
+        from src.command_doctor import run_doctor
 
         report = run_doctor(self.store, self._sys_check)
         report.print()

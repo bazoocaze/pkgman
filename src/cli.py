@@ -7,7 +7,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from commands import Commands
+from src.commands import Commands
 
 
 # -- argument parsing ----------------------------------------------------

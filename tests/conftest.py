@@ -4,7 +4,7 @@ import tempfile
 
 import pytest
 
-from database import Database, PackageStore
+from src.database import Database, PackageStore
 
 
 @pytest.fixture

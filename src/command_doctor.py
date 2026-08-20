@@ -11,8 +11,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from constants import DB_VERSION, KNOWN_MANAGERS
-from output import _Colors
+from src.constants import DB_VERSION, KNOWN_MANAGERS
+from src.output import _Colors
 
 
 # ---------------------------------------------------------------------------
@@ -154,7 +154,7 @@ def _check_db(report: DoctorReport, store: Any) -> None:
 def _check_os_manager(report: DoctorReport, sys_check: Any) -> None:
     """Detect the OS package manager (apt/yum/brew)."""
     # Lazy import to avoid circular dependencies at module level
-    from managers import detect_os_manager
+    from src.managers import detect_os_manager
 
     mgr = detect_os_manager(sys_check=sys_check)
     if mgr is not None:

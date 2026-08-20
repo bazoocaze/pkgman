@@ -1,6 +1,6 @@
 """Tests for KNOWN_MANAGERS – validates values to catch accidental changes."""
 
-from constants import KNOWN_MANAGERS
+from src.constants import KNOWN_MANAGERS
 
 
 def test_known_managers_values():

@@ -10,9 +10,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
-from constants import ManagerType
-from runner import ProcessRunner, SubprocessRunner
-from sys_check import RealSysCheck, SysCheck
+from src.constants import ManagerType
+from src.runner import ProcessRunner, SubprocessRunner
+from src.sys_check import RealSysCheck, SysCheck
 
 
 # ---------------------------------------------------------------------------

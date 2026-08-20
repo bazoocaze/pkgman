@@ -5,9 +5,9 @@ import subprocess
 from unittest.mock import patch, MagicMock
 
 import pytest
-from managers import Manager, CustomManager, ManagerRegistry, _substitute
-from runner import ProcessRunner
-from database import Database, PackageStore
+from src.managers import Manager, CustomManager, ManagerRegistry, _substitute
+from src.runner import ProcessRunner
+from src.database import Database, PackageStore
 
 
 # =========================================================================

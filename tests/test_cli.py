@@ -6,9 +6,9 @@ import subprocess
 
 import pytest
 
-from constants import KNOWN_MANAGERS
+from src.constants import KNOWN_MANAGERS
 from pkgman import main
-from sys_check import SysCheck
+from src.sys_check import SysCheck
 
 
 def run(*args, sys_check: SysCheck | None = None):

@@ -45,7 +45,7 @@ def prompt_checkbox(
 
 def print_manager_summary(managers: dict) -> None:
     """Print a summary of all registered custom managers."""
-    from constants import RESERVED_MANAGERS
+    from src.constants import RESERVED_MANAGERS
 
     print("\nRegistered custom managers:")
     custom_managers = {

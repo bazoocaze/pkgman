@@ -3,8 +3,8 @@
 import json
 
 import pytest
-from database import Database, PackageStore
-from constants import ManagerType
+from src.database import Database, PackageStore
+from src.constants import ManagerType
 
 
 # =========================================================================

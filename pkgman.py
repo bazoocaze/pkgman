@@ -10,9 +10,9 @@ import sys
 from importlib.metadata import PackageNotFoundError, version
 from typing import Optional
 
-from cli import COMMAND_DISPATCH, build_parser
-from commands import Commands
-from sys_check import SysCheck
+from src.cli import COMMAND_DISPATCH, build_parser
+from src.commands import Commands
+from src.sys_check import SysCheck
 
 # -- version detection ---------------------------------------------------
 

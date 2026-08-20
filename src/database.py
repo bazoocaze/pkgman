@@ -9,7 +9,7 @@ Architecture:
 import json
 from pathlib import Path
 
-from constants import (
+from src.constants import (
     DB_VERSION,
     RESERVED_MANAGERS,
     ManagerType,

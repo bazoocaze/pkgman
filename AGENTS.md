@@ -39,27 +39,35 @@ pkgman -f ~/my_database.json list                    # use an alternative databa
 ## Architecture
 
 ```
-pkgman.py          → entry point + argparse
-command_doctor.py  → diagnostic checks (DoctorReport, run_doctor)
-commands.py        → orchestrator (install/remove/update/list/configure/doctor)
-database.py        → CRUD for ~/.config/.pkgman_database.json (v2 schema with managers)
-managers.py        → Manager (detection + execution of apt/yum/brew) and
-                     ManagerRegistry + CustomManager (unified custom managers)
-constants.py       → enums (ManagerType, SudoSetting), DB_VERSION,
-                     KNOWN_MANAGERS, RESERVED_MANAGERS
-cli.py             → argparse setup + handler dispatch (COMMAND_DISPATCH)
-output.py          → console formatting (Report, format_package_list, _snippet)
-ui.py              → interactive UI helpers (prompt_checkbox, print_manager_summary)
-runner.py          → ProcessRunner protocol + SubprocessRunner (subprocess.run wrapper)
+pkgman.py          → entry point + argparse (root)
+src/               → package with all modules
+  cli.py           → argparse setup + handler dispatch (COMMAND_DISPATCH)
+  command_doctor.py→ diagnostic checks (DoctorReport, run_doctor)
+  commands.py      → orchestrator (install/remove/update/list/configure/doctor)
+  constants.py     → enums (ManagerType, SudoSetting), DB_VERSION,
+                      KNOWN_MANAGERS, RESERVED_MANAGERS
+  database.py      → CRUD for ~/.config/.pkgman_database.json (v2 schema)
+  managers.py      → Manager (detection + execution of apt/yum/brew) and
+                      ManagerRegistry + CustomManager (unified custom managers)
+  output.py        → console formatting (Report, format_package_list, _snippet)
+  runner.py        → ProcessRunner protocol + SubprocessRunner
+  sys_check.py     → SysCheck abstraction (which checks)
+  ui.py            → interactive UI helpers (prompt_checkbox, print_manager_summary)
 tests/             → pytest test suite
+run-tests.sh       → shortcut: `uv run pytest tests/`
+run-integration-tests.sh  → shortcut: `PKGMAN_TEST_INTEGRATION=1 uv run pytest tests/`
+run-app.sh         → shortcut: `uv run python pkgman.py "$@"`
 pyproject.toml     → build config + entry point (pkgman = "pkgman:main")
 ```
+
+**Imports**: all internal modules are accessed via the `src` package, e.g.
+`from src.cli import ...`, `from src.constants import ...`, etc.
 
 ---
 
 ## API cheat sheet – symbols you can import
 
-### constants.py
+### src.constants
 | Symbol | Description |
 |---|---|
 | `ManagerType.PACKAGE`, `.AUTO` | `"package"`, `"auto"` |
@@ -68,7 +76,7 @@ pyproject.toml     → build config + entry point (pkgman = "pkgman:main")
 | `KNOWN_MANAGERS` | `dict` — `name → {exe, install, remove, update}`. Used by `configure`. |
 | `RESERVED_MANAGERS` | `frozenset({"package", "auto"})` — forbidden as custom manager names |
 
-### commands.py
+### src.commands
 ```
 Commands(db_path: str|Path = None, *, runner: ProcessRunner = None)
 
@@ -91,7 +99,7 @@ Commands(db_path: str|Path = None, *, runner: ProcessRunner = None)
   ._sudo_for(manager) -> bool  # sudo only applies to @package
 ```
 
-### database.py
+### src.database
 ```
 Database(path: str|Path = None)
   .read() -> dict           # raw JSON from disk
@@ -113,7 +121,7 @@ PackageStore(db: Database)
 
 **Important:** `store.managers[k] = v` mutates directly but does NOT auto-save — call `store.save()` after.
 
-### managers.py
+### src.managers
 ```
 Manager(name: str, *, runner: ProcessRunner = None)
   .install(package_name: str, *, sudo: bool = False) -> None
@@ -133,7 +141,7 @@ detect_os_manager() -> Manager|None   # brew > apt > yum
 _substitute(cmd, name, source)        # replaces {name}/{source} placeholders
 ```
 
-### runner.py
+### src.runner
 ```
 ProcessRunner (Protocol)
   .run(cmd: list[str]|str, *, shell: bool = False) -> None
@@ -141,7 +149,7 @@ ProcessRunner (Protocol)
 SubprocessRunner()           # real impl; raises CalledProcessError on failure
 ```
 
-### output.py
+### src.output
 ```
 Report()
   .add_ok(ptype: str, name: str, detail: str = "") -> None
@@ -151,16 +159,16 @@ Report()
 format_package_list(packages: list[dict], *, json_output: bool = False) -> str
 ```
 
-### ui.py
+### src.ui
 ```
-prompt_checkbox(candidates: list[tuple[str, str, list|str, list|str|None, list|str|None]]) -> list
+prompt_checkbox(labels: list[str]) -> list[int]
 print_manager_summary(managers: dict) -> None
 ```
 
 - `prompt_checkbox` — interactive numbered selection prompt for configure
 - `print_manager_summary` — prints registered custom managers with install/remove/update icons
 
-### command_doctor.py
+### src.command_doctor
 ```
 DoctorReport()
   .ok(detail: str) -> None
@@ -182,7 +190,7 @@ Checks included:
 - Package type-to-manager alignment
 ```
 
-### cli.py
+### src.cli
 ```
 build_parser() -> ArgumentParser
 COMMAND_DISPATCH: dict[str, callable]   # {"install": ..., "remove": ..., "list": ..., "configure": ..., "update": ..., "doctor": ...}
@@ -211,9 +219,9 @@ used for `{source}` template substitution, not the implicit name.
 
 ## Adding a new subcommand
 
-1. **`cli.py`**: add subparser in `build_parser()`, create `_handle_xxx(cmds, args)`, register in `COMMAND_DISPATCH`
-2. **`commands.py`**: add method on `Commands`
-3. If adding a new `.py` file: include its module name in `[tool.setuptools] py-modules` in `pyproject.toml`
+1. **`src/cli.py`**: add subparser in `build_parser()`, create `_handle_xxx(cmds, args)`, register in `COMMAND_DISPATCH`
+2. **`src/commands.py`**: add method on `Commands`
+3. If adding a new `.py` file: place it under `src/` — modules inside the `src` package are auto-discovered via `packages = ["src"]`
 
 ## Adding a new known manager (for `configure`)
 
@@ -242,7 +250,7 @@ For shell-pipe managers (e.g. `bash`, `zsh`), use a string install command:
 | Fixture `db_path` | Temp JSON file, auto-cleaned (`tests/conftest.py`) |
 | Fixture `empty_db` | Returns a ready-to-use `PackageStore` |
 | Mock install/remove/update | `patch.object(cmds.registry, "install")` / `"remove"` / `"update"` |
-| Mock PATH detection | `patch("commands.shutil.which", return_value=...)` |
+| Mock PATH detection | `patch("src.commands.shutil.which", return_value=...)` |
 | Mock user input | `patch("builtins.input", return_value=...)` or `side_effect=[...]` |
 | Capture output | `capsys.readouterr()` (pytest built-in) |
 | CLI integration tests | `subprocess.run(["python3", "pkgman.py", ...])` via `run()` in `tests/test_cli.py` |
@@ -251,11 +259,12 @@ For shell-pipe managers (e.g. `bash`, `zsh`), use a string install command:
 ## Running tests
 
 ```bash
-uv sync              # install dev dependencies (pytest)
-uv run pytest        # run all tests
-uv run pytest -v     # verbose
+uv sync                          # install dev dependencies (pytest)
+./run-tests.sh                   # run all tests (shortcut)
+./run-integration-tests.sh       # include integration tests
+uv run pytest -v                 # verbose
 uv run pytest tests/test_cli.py  # single file
-PKGMAN_TEST_INTEGRATION=1 uv run pytest  # include integration tests
+uv run pytest -k "test_name"     # single test
 ```
 
 ## Database

@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.2.10] - 2026-08-19
+
+### Changed
+
+- All source modules moved from project root to `src/` package directory.
+- Internal imports updated to use `src.` prefix (`from src.cli import ...`).
+- `pyproject.toml`: replaced flat `py-modules` list with `packages = ["src"]`.
+- `test.sh` / `test-integration.sh` renamed to `run-tests.sh` / `run-integration-tests.sh`.
+- `AGENTS.md` updated to reflect new `src/` layout and scripts.
+
 ## [2.2.9] - 2026-08-05
 
 ### Added

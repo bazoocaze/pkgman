@@ -2,8 +2,8 @@
 
 import json
 
-from database import Database, PackageStore
-from command_doctor import DoctorReport, run_doctor
+from src.database import Database, PackageStore
+from src.command_doctor import DoctorReport, run_doctor
 
 
 class FakeSysCheck:
