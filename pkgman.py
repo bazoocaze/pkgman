@@ -12,6 +12,7 @@ from typing import Optional
 
 from src.cli import COMMAND_DISPATCH, build_parser
 from src.commands import Commands
+from src.exceptions import PkgmanError
 from src.sys_check import SysCheck
 
 # -- version detection ---------------------------------------------------
@@ -44,7 +45,11 @@ def main(
 
     cmds = Commands(db_path=args.file, sys_check=sys_check, dry_run=args.no_run)
     handler = COMMAND_DISPATCH[args.command]
-    handler(cmds, args)
+    try:
+        handler(cmds, args)
+    except PkgmanError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(e.exit_code)
 
 
 if __name__ == "__main__":

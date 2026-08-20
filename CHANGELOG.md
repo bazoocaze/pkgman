@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.2.12] - 2026-08-20
+
+### Fixed
+
+- `install/remove/update` with an explicit but unconfigured custom manager
+  (e.g. `@bash` without running `configure` first) no longer falls back
+  silently to the OS package manager. Now prints a clear error and exits
+  with code 1 — no traceback.
+
+### Added
+
+- `src/exceptions.py` with `PkgmanError`, a generic exception carrying an
+  exit code, caught near main for clean error reporting without traceback.
+- `ManagerRegistry.resolve()` method that centralizes manager resolution
+  and validates existence of custom managers.
+
 ## [2.2.11] - 2026-08-20
 
 ### Added

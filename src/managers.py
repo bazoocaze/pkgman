@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
 from src.constants import ManagerType
+from src.exceptions import PkgmanError
 from src.runner import ProcessRunner, SubprocessRunner
 from src.sys_check import RealSysCheck, SysCheck
 
@@ -168,39 +169,52 @@ class ManagerRegistry:
             return None
         return CustomManager.from_dict(name=manager_name, data=mgr)
 
-    def install(self, manager_name: str, name: str, source: str, *, sudo: bool = False) -> None:
-        """Route install to the appropriate manager."""
+    def resolve(self, manager_name: str) -> Manager | CustomManager:
+        """Resolve a manager name to a concrete implementation.
+
+        Returns a Manager for ``@package`` or a CustomManager for
+        configured custom managers defined in the database.
+
+        Raises PkgmanError if the custom manager is not configured.
+        """
+        if manager_name == ManagerType.PACKAGE:
+            return self._detect_os_manager()
+
         custom = self.get(manager_name)
         if custom is None:
-            mgr = self._detect_os_manager()
+            raise PkgmanError(
+                f"Manager '@{manager_name}' is not configured. "
+                f"Run 'pkgman configure' first."
+            )
+        return custom
+
+    def install(self, manager_name: str, name: str, source: str, *, sudo: bool = False) -> None:
+        """Route install to the appropriate manager."""
+        mgr = self.resolve(manager_name)
+        if isinstance(mgr, Manager):
             mgr.install(name, sudo=sudo)
             return
-
-        cmd = _substitute(custom.install_cmd, name, source)
+        cmd = _substitute(mgr.install_cmd, name, source)
         if cmd is not None:
             self.runner.run(cmd, shell=isinstance(cmd, str))
 
     def remove(self, manager_name: str, name: str, source: str, *, sudo: bool = False) -> None:
         """Route remove to the appropriate manager."""
-        custom = self.get(manager_name)
-        if custom is None:
-            mgr = self._detect_os_manager()
+        mgr = self.resolve(manager_name)
+        if isinstance(mgr, Manager):
             mgr.remove(name, sudo=sudo)
             return
-
-        cmd = _substitute(custom.remove_cmd, name, source)
+        cmd = _substitute(mgr.remove_cmd, name, source)
         if cmd is not None:
             self.runner.run(cmd, shell=isinstance(cmd, str))
 
     def update(self, manager_name: str, name: str, source: str, *, sudo: bool = False) -> None:
         """Route update to the appropriate manager."""
-        custom = self.get(manager_name)
-        if custom is None:
-            mgr = self._detect_os_manager()
+        mgr = self.resolve(manager_name)
+        if isinstance(mgr, Manager):
             mgr.update(name, sudo=sudo)
             return
-
-        cmd = _substitute(custom.update_cmd, name, source)
+        cmd = _substitute(mgr.update_cmd, name, source)
         if cmd is not None:
             self.runner.run(cmd, shell=isinstance(cmd, str))
 

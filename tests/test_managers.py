@@ -153,6 +153,29 @@ class TestManagerRegistry:
         reg = ManagerRegistry(_make_store())
         assert reg.get("nonexistent") is None
 
+    def test_resolve_package_returns_manager(self):
+        reg = ManagerRegistry(_make_store())
+        with patch("src.managers.detect_os_manager") as mock_detect:
+            mock_detect.return_value = Manager("apt")
+            mgr = reg.resolve("package")
+            assert isinstance(mgr, Manager)
+            assert mgr.name == "apt"
+
+    def test_resolve_raises_for_unknown_manager(self):
+        from src.exceptions import PkgmanError
+        reg = ManagerRegistry(_make_store())
+        with pytest.raises(PkgmanError, match="not configured"):
+            reg.resolve("nonexistent")
+
+    def test_resolve_returns_custom_manager(self):
+        store = _make_store(
+            {"my": {"install": ["my", "install", "{source}"]}}
+        )
+        reg = ManagerRegistry(store)
+        mgr = reg.resolve("my")
+        assert isinstance(mgr, CustomManager)
+        assert mgr.name == "my"
+
 
 # =========================================================================
 # _substitute tests

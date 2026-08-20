@@ -401,3 +401,31 @@ def test_doctor_with_errors(db_path):
     r = run("-f", db_path, "doctor", sys_check=NoManagerSysCheck())
     assert r.returncode == 1
     assert "No OS package manager detected" in r.stdout
+
+
+def test_install_unknown_manager_error(db_path):
+    """@missing no manager configurado -> erro limpo sem traceback."""
+    data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    r = run("-f", db_path, "install", "@bash", "https://ollama.com/install.sh")
+    assert r.returncode == 1
+    assert "Error" in r.stderr
+    assert "not configured" in r.stderr
+    assert "Traceback" not in r.stderr
+
+
+def test_update_unknown_manager_error(db_path):
+    """update @missing -> erro limpo sem traceback."""
+    data = {
+        "version": 2, "sudo": "no", "managers": {}, "packages": [
+            {"type": "bash", "name": "ollama", "source": "https://ollama.com/install.sh"},
+        ],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    r = run("-f", db_path, "update", "@bash", "ollama")
+    assert r.returncode == 1
+    assert "Error" in r.stderr
+    assert "not configured" in r.stderr
+    assert "Traceback" not in r.stderr
