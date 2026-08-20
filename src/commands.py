@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 from src.constants import KNOWN_MANAGERS, ManagerType, SudoSetting
@@ -15,6 +16,15 @@ from src.output import Report, _snippet, format_package_list
 from src.runner import DryRunRunner, ProcessRunner, SubprocessRunner
 from src.sys_check import RealSysCheck, SysCheck
 from src.ui import print_manager_summary, prompt_checkbox
+
+
+@dataclass
+class InstallConflictResult:
+    """Result of a conflict check during install."""
+
+    action: str  # "new" | "reinstall" | "upgrade" | "error"
+    run_source: str
+    error_msg: str | None = None
 
 
 class Commands:
@@ -69,69 +79,98 @@ class Commands:
             name = name_or_names if isinstance(name_or_names, str) else name_or_names[0]
             self._install_single(manager, name, source)
 
-    def _install_single(self, manager: str, name: str, source: str | None) -> None:
-        source = source or name
+    def _check_install_conflict(self, manager: str, name: str, source: str) -> InstallConflictResult:
+        """Check if *name*/*source* conflicts with existing packages of the same type.
+
+        Returns an ``InstallConflictResult`` describing what action to take:
+
+        * ``"new"`` — no conflict, safe to install and register.
+        * ``"reinstall"`` — exact match or implicit name matches existing
+          sourced package; re-run install without touching the DB.
+        * ``"upgrade"`` — existing package has no source and new one is
+          explicit; upgrade DB record with the new source.
+        * ``"error"`` — conflict detected; check ``error_msg`` for details.
+        """
         has_explicit_source = source != name
 
-        sudo = self._sudo_for(manager)
-
-        # Check for conflicts with existing packages of the same type
         for pkg in self.store.packages:
             if pkg["type"] != manager:
                 continue
 
             existing_name = pkg["name"]
-            existing_source = pkg.get("source")  # None if not stored
+            existing_source = pkg.get("source")
 
             # Case 1: same type+source (explicit), different name -> error
             if has_explicit_source and existing_source == source and existing_name != name:
-                print(
-                    f"Error: package '{name}' has the same source '{source}' "
-                    f"as existing package '{existing_name}' of '@{manager}'",
-                    file=sys.stderr,
+                return InstallConflictResult(
+                    action="error",
+                    run_source=source,
+                    error_msg=(
+                        f"Error: package '{name}' has the same source '{source}' "
+                        f"as existing package '{existing_name}' of '@{manager}'"
+                    ),
                 )
-                return
 
             if existing_name != name:
                 continue
 
             # Same name cases ————————————————
 
-            # Cases 3 & 5: run install but don't touch database
-            # Use the stored source (if any) so {source} substitution is correct
+            # Cases 3 & 5: run install but don't mutate database
             if not has_explicit_source or existing_source == source:
                 run_source = existing_source or source
-                print(f"  -> {name} already registered. Reinstalling.")
-                self.registry.install(manager, name, run_source, sudo=sudo)
-                return
+                return InstallConflictResult(action="reinstall", run_source=run_source)
 
             # New install has an explicit source ————————————————
 
             if existing_source is None:
                 # Case 2: upgrade name-only -> name+source
-                print(f"  -> {name} updated with source: {source}")
-                self.registry.install(manager, name, source, sudo=sudo)
-                self.store.update_source(name, source)
-                return
+                return InstallConflictResult(action="upgrade", run_source=source)
 
             # Case 4: same name, different source -> error
-            print(
-                f"Error: package '{name}' already registered with source "
-                f"'{existing_source}', refusing to overwrite",
-                file=sys.stderr,
+            return InstallConflictResult(
+                action="error",
+                run_source=source,
+                error_msg=(
+                    f"Error: package '{name}' already registered with source "
+                    f"'{existing_source}', refusing to overwrite"
+                ),
             )
+
+        # No conflict
+        return InstallConflictResult(action="new", run_source=source)
+
+    def _install_single(self, manager: str, name: str, source: str | None) -> None:
+        source = source or name
+        has_explicit_source = source != name
+        result = self._check_install_conflict(manager, name, source)
+
+        if result.action == "error":
+            print(result.error_msg, file=sys.stderr)
             return
 
-        # No conflict -> proceed with install
-        print(f"Installing {manager} package: {name}")
-        if has_explicit_source:
-            print(f"  Source: {source}")
-        self.registry.install(manager, name, source, sudo=sudo)
-        entry: dict = {"type": manager, "name": name}
-        if has_explicit_source:
-            entry["source"] = source
-        self.store.add(entry)
-        print(f"  -> {name} installed and registered.")
+        # Single point of execution — run install regardless of action
+        sudo = self._sudo_for(manager)
+        try:
+            self.registry.install(manager, name, result.run_source, sudo=sudo)
+        except subprocess.CalledProcessError as e:
+            print(f"Error installing {name}: exit {e.returncode}", file=sys.stderr)
+            return
+
+        # DB mutations — only if install succeeded
+        if result.action == "new":
+            if has_explicit_source:
+                print(f"  Source: {source}")
+            entry: dict = {"type": manager, "name": name}
+            if has_explicit_source:
+                entry["source"] = source
+            self.store.add(entry)
+            print(f"  -> {name} installed and registered.")
+        elif result.action == "upgrade":
+            self.store.update_source(name, source)
+            print(f"  -> {name} updated with source: {source}")
+        else:  # reinstall
+            print(f"  -> {name} already registered. Reinstalled.")
 
     # -- install-all (replay) --------------------------------------------
 

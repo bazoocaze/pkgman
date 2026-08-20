@@ -7,6 +7,18 @@ import pytest
 from src.database import Database, PackageStore
 
 
+class FakeSysCheck:
+    """Mock SysCheck that returns custom PATH mappings."""
+
+    def __init__(self, mapping: dict[str, str | None] | None = None) -> None:
+        self._mapping = mapping or {}
+
+    def which(self, executable: str) -> str | None:
+        if executable in self._mapping:
+            return self._mapping[executable]
+        return "/usr/bin/" + executable
+
+
 @pytest.fixture
 def db_path():
     with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as f:
