@@ -58,6 +58,25 @@ class TestPackageStore:
         empty_db.remove("git")
         assert len(empty_db.packages) == 0
 
+    def test_update_field(self, empty_db):
+        empty_db.add({"type": "foobar", "name": "ruff"})
+        empty_db.update("ruff", {"type": "foobar", "name": "ruff", "source": "github:astral-sh/ruff"})
+        assert empty_db.find("ruff")["source"] == "github:astral-sh/ruff"
+
+    def test_update_rename(self, empty_db):
+        empty_db.add({"type": "bash", "name": "https://example.com/install.sh"})
+        empty_db.update(
+            "https://example.com/install.sh",
+            {"type": "bash", "name": "my-tool", "source": "https://example.com/install.sh"},
+        )
+        assert empty_db.find("my-tool") is not None
+        assert empty_db.find("my-tool")["source"] == "https://example.com/install.sh"
+        assert empty_db.find("https://example.com/install.sh") is None
+
+    def test_update_not_found(self, empty_db):
+        with pytest.raises(ValueError, match="not found"):
+            empty_db.update("nonexistent", {"type": "package", "name": "x"})
+
     def test_sudo_setter(self, empty_db):
         empty_db.sudo = "yes"
         assert empty_db.sudo == "yes"

@@ -22,6 +22,7 @@ def test_known_managers_values():
             "install": ["pi", "install", "{source}"],
             "remove": ["pi", "remove", "{source}"],
             "update": ["pi", "update", "{source}"],
+            "name_regex": r"npm:(?:@[^/]+/)?(.+)",
         },
         "uv": {
             "exe": "uv",

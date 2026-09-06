@@ -59,4 +59,8 @@ def print_manager_summary(managers: dict) -> None:
             has_install = "🔧" if cfg.get("install") else "-"
             has_remove = "🗑️" if cfg.get("remove") else "-"
             has_update = "🔄" if cfg.get("update") else "-"
-            print(f"  @{name:<12} {has_install} install  {has_remove} remove  {has_update} update")
+            has_regex = "🧩" if cfg.get("name_regex") else "-"
+            print(
+                f"  @{name:<12} {has_install} install  {has_remove} remove  "
+                f"{has_update} update  {has_regex} name_regex"
+            )

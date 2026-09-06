@@ -22,8 +22,9 @@ from src.ui import print_manager_summary, prompt_checkbox
 class InstallConflictResult:
     """Result of a conflict check during install."""
 
-    action: str  # "new" | "reinstall" | "upgrade" | "error"
+    action: str  # "new" | "reinstall" | "update" | "error"
     run_source: str
+    db_name: str | None = None  # existing name in DB (may differ from CLI name on rename)
     error_msg: str | None = None
 
 
@@ -85,10 +86,12 @@ class Commands:
         Returns an ``InstallConflictResult`` describing what action to take:
 
         * ``"new"`` — no conflict, safe to install and register.
-        * ``"reinstall"`` — exact match or implicit name matches existing
-          sourced package; re-run install without touching the DB.
-        * ``"upgrade"`` — existing package has no source and new one is
-          explicit; upgrade DB record with the new source.
+        * ``"reinstall"`` — same name and source already match; re-run install
+          without touching the DB.
+        * ``"update"`` — existing entry differs from what the user wants;
+          run install and update the DB record to ``{type, name, source}``.
+          ``db_name`` holds the existing name (may differ from *name* when
+          renaming).
         * ``"error"`` — conflict detected; check ``error_msg`` for details.
         """
         has_explicit_source = source != name
@@ -100,42 +103,33 @@ class Commands:
             existing_name = pkg["name"]
             existing_source = pkg.get("source")
 
-            # Case 1: same type+source (explicit), different name -> error
-            if has_explicit_source and existing_source == source and existing_name != name:
+            # Case 1: same source, different name → update (rename)
+            if existing_source == source and existing_name != name:
                 return InstallConflictResult(
-                    action="error",
+                    action="update",
                     run_source=source,
-                    error_msg=(
-                        f"Error: package '{name}' has the same source '{source}' "
-                        f"as existing package '{existing_name}' of '@{manager}'"
-                    ),
+                    db_name=existing_name,
                 )
 
             if existing_name != name:
+                # Case 6: existing name == new source, existing has no source → update (rename)
+                if has_explicit_source and existing_source is None and existing_name == source:
+                    return InstallConflictResult(
+                        action="update",
+                        run_source=source,
+                        db_name=existing_name,
+                    )
                 continue
 
-            # Same name cases ————————————————
+            # Same name ————————————————
 
-            # Cases 3 & 5: run install but don't mutate database
+            # Cases 3 & 5: no source change → reinstall, DB untouched
             if not has_explicit_source or existing_source == source:
                 run_source = existing_source or source
                 return InstallConflictResult(action="reinstall", run_source=run_source)
 
-            # New install has an explicit source ————————————————
-
-            if existing_source is None:
-                # Case 2: upgrade name-only -> name+source
-                return InstallConflictResult(action="upgrade", run_source=source)
-
-            # Case 4: same name, different source -> error
-            return InstallConflictResult(
-                action="error",
-                run_source=source,
-                error_msg=(
-                    f"Error: package '{name}' already registered with source "
-                    f"'{existing_source}', refusing to overwrite"
-                ),
-            )
+            # Cases 2 & 4: source changed → update DB
+            return InstallConflictResult(action="update", run_source=source, db_name=name)
 
         # No conflict
         return InstallConflictResult(action="new", run_source=source)
@@ -143,6 +137,18 @@ class Commands:
     def _install_single(self, manager: str, name: str, source: str | None) -> None:
         source = source or name
         has_explicit_source = source != name
+
+        # Name extraction from a single-argument source (custom managers only).
+        # When the user provides just a source (implicit name == source) and the
+        # manager has a name_regex, derive the name from the source.
+        if not has_explicit_source:
+            custom = self.registry.get(manager)
+            if custom is not None and custom.name_regex:
+                extracted = custom.extract_name(source)
+                if extracted and extracted != source:
+                    name = extracted
+                    has_explicit_source = True
+
         result = self._check_install_conflict(manager, name, source)
 
         if result.action == "error":
@@ -166,9 +172,12 @@ class Commands:
                 entry["source"] = source
             self.store.add(entry)
             print(f"  -> {name} installed and registered.")
-        elif result.action == "upgrade":
-            self.store.update_source(name, source)
-            print(f"  -> {name} updated with source: {source}")
+        elif result.action == "update":
+            entry = {"type": manager, "name": name}
+            if has_explicit_source:
+                entry["source"] = source
+            self.store.update(result.db_name, entry)
+            print(f"  -> {name} installed and registered.")
         else:  # reinstall
             print(f"  -> {name} already registered. Reinstalled.")
 
@@ -335,11 +344,14 @@ class Commands:
         # -- add ---------------------------------------------------------
         added = 0
         for mgr_name, mgr in selected:
-            managers[mgr_name] = {
+            entry: dict = {
                 "install": mgr["install"],
                 "remove": mgr["remove"],
                 "update": mgr["update"],
             }
+            if mgr.get("name_regex"):
+                entry["name_regex"] = mgr["name_regex"]
+            managers[mgr_name] = entry
             added += 1
             print(f"  -> '@{mgr_name}' added.")
 

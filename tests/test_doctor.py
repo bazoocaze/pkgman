@@ -174,3 +174,57 @@ def test_run_doctor_manager_not_on_path(db_path, capsys):
     assert report.has_errors is True
     assert "uv" in captured.out
     assert "not found on PATH" in captured.out
+
+
+def test_run_doctor_valid_name_regex(db_path, capsys):
+    data = {
+        "version": 2,
+        "sudo": "no",
+        "managers": {
+            "pi": {
+                "install": ["pi", "install", "{source}"],
+                "name_regex": r"npm:(.+)",
+            },
+        },
+        "packages": [],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+
+    db = Database(db_path)
+    store = PackageStore(db)
+    store.load()
+
+    report = run_doctor(store, FakeSysCheck())
+    report.print()
+    captured = capsys.readouterr()
+
+    assert report.has_errors is False
+    assert "All manager name_regex fields are valid" in captured.out
+
+
+def test_run_doctor_invalid_name_regex(db_path, capsys):
+    data = {
+        "version": 2,
+        "sudo": "no",
+        "managers": {
+            "pi": {
+                "install": ["pi", "install", "{source}"],
+                "name_regex": r"(unclosed",
+            },
+        },
+        "packages": [],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+
+    db = Database(db_path)
+    store = PackageStore(db)
+    store.load()
+
+    report = run_doctor(store, FakeSysCheck())
+    report.print()
+    captured = capsys.readouterr()
+
+    assert report.has_errors is False
+    assert "invalid name_regex" in captured.out

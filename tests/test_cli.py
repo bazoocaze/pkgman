@@ -122,6 +122,33 @@ def test_install_at_foobar_name_source_parses(db_path):
     assert r.returncode != 2
 
 
+def test_install_at_manager_name_regex_extracts(db_path):
+    """pkgman install @pi npm:pi-blackhole -> name extracted via name_regex."""
+    data = {
+        "version": 2, "sudo": "no",
+        "managers": {
+            "pi": {
+                "install": ["echo", "install", "{source}"],
+                "remove": ["echo", "remove", "{source}"],
+                "update": ["echo", "update", "{source}"],
+                "name_regex": r"npm:(.+)",
+            },
+        },
+        "packages": [],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    r = run("-f", db_path, "install", "@pi", "npm:pi-blackhole")
+    assert r.returncode == 0
+    assert "pi-blackhole installed and registered" in r.stdout
+    assert "Source: npm:pi-blackhole" in r.stdout
+    with open(db_path) as f:
+        saved = json.load(f)
+    pkg = saved["packages"][0]
+    assert pkg["name"] == "pi-blackhole"
+    assert pkg["source"] == "npm:pi-blackhole"
+
+
 @integration
 def test_remove_git_parses(db_path):
     """pkgman remove git -> @auto implicit, parses correctly (smoke test)."""

@@ -130,6 +130,41 @@ class TestCustomManager:
         })
         assert cm.update_cmd is None
 
+    def test_from_dict_with_name_regex(self):
+        cm = CustomManager.from_dict("pi", {
+            "install": ["pi", "install", "{source}"],
+            "remove": ["pi", "remove", "{source}"],
+            "update": ["pi", "update", "{source}"],
+            "name_regex": r"npm:(.+)",
+        })
+        assert cm.name_regex == r"npm:(.+)"
+
+    def test_extract_name_group1(self):
+        cm = CustomManager(name="pi", name_regex=r"npm:(?:@[^/]+/)?(.+)")
+        assert cm.extract_name("npm:pi-blackhole") == "pi-blackhole"
+        assert cm.extract_name("npm:@ff-labs/pi-fff") == "pi-fff"
+
+    def test_extract_name_full_match(self):
+        cm = CustomManager(name="pi", name_regex=r"npm:.*")
+        assert cm.extract_name("npm:pi-blackhole") == "npm:pi-blackhole"
+
+    def test_extract_name_alternation(self):
+        cm = CustomManager(name="pi", name_regex=r"npm:(.+)|gh:(.+)")
+        assert cm.extract_name("npm:pi-blackhole") == "pi-blackhole"
+        assert cm.extract_name("gh:astral-sh/ruff") == "astral-sh/ruff"
+
+    def test_extract_name_no_match(self):
+        cm = CustomManager(name="pi", name_regex=r"npm:(.+)")
+        assert cm.extract_name("git") is None
+
+    def test_extract_name_no_regex(self):
+        cm = CustomManager(name="foobar", name_regex=None)
+        assert cm.extract_name("anything") is None
+
+    def test_extract_name_invalid_regex(self):
+        cm = CustomManager(name="pi", name_regex=r"(unclosed")
+        assert cm.extract_name("npm:pi-blackhole") is None
+
 
 # =========================================================================
 # ManagerRegistry tests

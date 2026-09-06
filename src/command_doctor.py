@@ -9,6 +9,7 @@ alignment. Produces a report with ok/warning/error states.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from src.constants import DB_VERSION, KNOWN_MANAGERS
@@ -110,6 +111,7 @@ def run_doctor(store: Any, sys_check: Any) -> DoctorReport:
     _check_db(report, store)
     _check_os_manager(report, sys_check)
     _check_managers_path(report, store, sys_check)
+    _check_manager_regex(report, store)
     _check_duplicate_names(report, store)
     _check_duplicate_identifiers(report, store)
     _check_type_vs_manager(report, store)
@@ -174,6 +176,25 @@ def _check_managers_path(
                 f"Manager '@{mgr_name}': executable "
                 f"'{exe}' not found on PATH"
             )
+
+
+def _check_manager_regex(report: DoctorReport, store: Any) -> None:
+    """Validate that each registered manager's ``name_regex`` compiles."""
+    invalid: list[str] = []
+    for mgr_name, mgr_config in store.managers.items():
+        regex = mgr_config.get("name_regex")
+        if not regex:
+            continue
+        try:
+            re.compile(regex)
+        except re.error:
+            invalid.append(mgr_name)
+
+    if invalid:
+        for name in sorted(invalid):
+            report.warn(f"Manager '@{name}': invalid name_regex")
+    else:
+        report.ok("All manager name_regex fields are valid")
 
 
 def _check_duplicate_names(report: DoctorReport, store: Any) -> None:

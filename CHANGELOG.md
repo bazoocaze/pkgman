@@ -1,5 +1,31 @@
 # Changelog
 
+## [2.2.13] - 2026-09-06
+
+### Added
+
+- Per-manager `name_regex` for custom managers: when
+  `pkgman install @<manager> <source>` is called with a single argument and
+  the manager declares a `name_regex`, the regex is run against the argument
+  to extract the package `name` (the argument is stored as `source`).
+  - Example: `pkgman install @pi npm:pi-blackhole` → name `pi-blackhole`,
+    source `npm:pi-blackhole`.
+  - Scoped npm packages supported: `npm:@ff-labs/pi-fff` → name `pi-fff`.
+  - Uses `re.match`; first non-empty capture group, else the full match.
+  - No match / no regex → standard behavior (argument is the name).
+  - Only applies to single-argument custom installs (implicit source).
+- `CustomManager.extract_name(arg)` in `src/managers.py`.
+- `pkgman doctor` now warns when a registered manager's `name_regex` is
+  not a valid, compilable regular expression.
+- `configure` persists `name_regex` for known managers that define it;
+  `print_manager_summary` shows a `🧩` marker when a manager has one.
+
+### Changed
+
+- `PackageStore.update_source(name, source)` renamed to
+  `PackageStore.update(db_name, package)`, replacing the full entry in-place.
+  Handles renames (when `db_name` differs from `package["name"]`).
+
 ## [2.2.12] - 2026-08-20
 
 ### Fixed

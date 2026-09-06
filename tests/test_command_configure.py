@@ -63,6 +63,21 @@ def test_configure_yes_adds_without_prompt(db_path, capsys):
     assert f"{len(KNOWN_MANAGERS)} manager(s) added" in captured.out
 
 
+def test_configure_yes_persists_name_regex(db_path, capsys):
+    """configure --yes persists name_regex when the known manager defines it."""
+    data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    cmds = Commands(db_path=db_path, sys_check=FakeSysCheck())
+    cmds.configure(yes=True)
+    for name, mgr in KNOWN_MANAGERS.items():
+        stored = cmds.store.managers[name]
+        if mgr.get("name_regex"):
+            assert stored["name_regex"] == mgr["name_regex"]
+        else:
+            assert "name_regex" not in stored
+
+
 def test_configure_checkbox_select_some(db_path, capsys):
     """configure checkbox: user selects specific numbers."""
     data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}

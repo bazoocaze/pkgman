@@ -166,15 +166,19 @@ class PackageStore:
         self._packages.append(package)
         self.save()
 
-    def update_source(self, name: str, source: str) -> None:
-        """Update the source of an existing package identified by name."""
+    def update(self, db_name: str, package: dict) -> None:
+        """Update an existing package identified by *db_name* in-place.
+
+        Replaces the full entry dict. Handles renames (when *db_name*
+        differs from *package["name"]*) as well as field updates.
+        """
         self._ensure_loaded()
-        for pkg in self._packages:
-            if pkg["name"] == name:
-                pkg["source"] = source
+        for i, pkg in enumerate(self._packages):
+            if pkg["name"] == db_name:
+                self._packages[i] = package
                 self.save()
                 return
-        raise ValueError(f"Package '{name}' not found")
+        raise ValueError(f"Package '{db_name}' not found")
 
     def remove(self, name: str) -> None:
         """Remove a package by name from the store."""

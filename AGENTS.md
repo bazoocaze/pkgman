@@ -112,8 +112,8 @@ PackageStore(db: Database)
   .load() -> list[dict]     # populate cache
   .save() -> None           # persist to disk
   .add(package: dict) -> None     # ignore duplicates by name; auto-saves
+  .update(db_name: str, package: dict) -> None  # replace entry by *db_name* (handles rename); auto-saves
   .remove(name: str) -> None      # auto-saves
-  .update_source(name: str, source: str) -> None  # add/update source on existing package; auto-saves
   .find(name: str) -> dict|None
   .find_by_source(source: str) -> dict|None
 
@@ -131,7 +131,8 @@ Manager(name: str, *, runner: ProcessRunner = None)
   .remove(package_name: str, *, sudo: bool = False) -> None
   .update(package_name: str, *, sudo: bool = False) -> None
 
-CustomManager(name: str, install_cmd: list|str|None, remove_cmd: list|str|None, update_cmd: list|str|None)
+CustomManager(name: str, install_cmd: list|str|None, remove_cmd: list|str|None, update_cmd: list|str|None, name_regex: str|None = None)
+  .extract_name(arg: str) -> str|None   # first non-empty group, else full match; None if no regex/no match
 
 ManagerRegistry(store, runner: ProcessRunner = SubprocessRunner())
   .get(manager_name: str) -> CustomManager|None
@@ -170,7 +171,7 @@ print_manager_summary(managers: dict) -> None
 ```
 
 - `prompt_checkbox` — interactive numbered selection prompt for configure
-- `print_manager_summary` — prints registered custom managers with install/remove/update icons
+- `print_manager_summary` — prints registered custom managers with install/remove/update/name_regex icons
 
 ### src.command_doctor
 ```
@@ -187,6 +188,7 @@ Checks included:
 - Database file exists, valid JSON, correct schema version
 - OS package manager detection (apt/yum/brew)
 - Registered manager executables on PATH
+- Valid `name_regex` per registered manager (warns on un-compilable regex)
 - Duplicate package names (global)
 - **Duplicate name/source identifiers per manager** — warns when
   the same value appears as `name` or `source` in more than one
@@ -209,11 +211,10 @@ against existing packages of the same manager type:
 
 | # | Scenario | Action |
 |---|---|---|
-| 1 | Same `type`+`source` (both explicit), different `name` | **Error** — no command run |
-| 2 | Same `type`+`name`, existing has **no** `source`, new has explicit `source` | **Upgrade** — runs install with new source, updates DB |
-| 3 | Same `type`+`name`+`source` (exact match) | **Reinstall** — runs install, DB untouched |
-| 4 | Same `type`+`name`, existing has `source`, new has **different** `source` | **Error** — no command run |
-| 5 | Same `type`+`name`, existing has `source`, new has **no** `source` | **Reinstall** — runs install with stored source, DB untouched |
+| 1 | Same `type`+`source` (both explicit), different `name` | **Update** — runs install, renames in DB to new name |
+| 3/5 | Same `type`+`name`, source unchanged (missing or same) | **Reinstall** — runs install, DB untouched |
+| 2/4 | Same `type`+`name`, new explicit source **different** from DB | **Update** — runs install with new source, updates DB |
+| 6 | `existing_name == new_source` (no stored source), `name != existing_name` | **Update** — runs install, renames and adds source |
 | — | No conflict | **Add** — runs install, registers in DB |
 
 For reinstalls (cases 3 & 5), the stored `source` value (if any) is
@@ -236,6 +237,7 @@ Add entry to `KNOWN_MANAGERS` in `constants.py`:
     "install": ["cmd", "install", "{source}"],         # install template (list or string)
     "remove": ["cmd", "remove", "{source}"],           # remove template (or None)
     "update": ["cmd", "update", "{source}"],           # update template (or None)
+    "name_regex": r"npm:(?:@[^/]+/)?(.+)",             # optional: extract name from single-arg source
 },
 ```
 For shell-pipe managers (e.g. `bash`, `zsh`), use a string install command:
@@ -282,7 +284,8 @@ File: `~/.config/.pkgman_database.json` (default) or custom via `-f`/`--file`
   "managers": {
     "uv": {"install": ["uv", "tool", "install", "{source}"], "remove": ["uv", "tool", "uninstall", "{source}"], "update": ["uv", "tool", "upgrade", "{source}"]},
     "bash": {"install": "curl -fsSL {source} | bash", "remove": null, "update": null},
-    "zsh": {"install": "curl -fsSL {source} | zsh", "remove": null, "update": null}
+    "zsh": {"install": "curl -fsSL {source} | zsh", "remove": null, "update": null},
+    "pi": {"install": ["pi", "install", "{source}"], "remove": ["pi", "remove", "{source}"], "update": ["pi", "update", "{source}"], "name_regex": "npm:(?:@[^/]+/)?(.+)"}
   },
   "packages": [
     {"type": "package", "name": "git"},
@@ -297,6 +300,26 @@ File: `~/.config/.pkgman_database.json` (default) or custom via `-f`/`--file`
 - Duplicate packages ignored by name (case-sensitive)
 - Empty or malformed file → treated as empty
 - `"sudo"` field controls `@package` commands only; custom managers are unaffected
+
+## Name extraction regex (`name_regex`)
+
+Custom managers can declare an optional `name_regex`. When
+`pkgman install @<manager> <source>` is called with a **single argument**
+and the manager has a `name_regex`, the regex is matched against the
+argument to extract the package `name`. On match, the extracted value is
+used as `name` and the original argument is stored as `source`:
+
+```
+pkgman install @pi npm:pi-blackhole          # name_regex "npm:(?:@[^/]+/)?(.+)" → name=pi-blackhole, source=npm:pi-blackhole
+pkgman install @pi npm:@ff-labs/pi-fff       # → name=pi-fff (scoped scope stripped), source=npm:@ff-labs/pi-fff
+```
+
+- Uses `re.match`; the **first non-empty capture group** is returned, else
+  the full match. No match / no regex → standard behavior (argument is the name).
+- Only applies to single-argument custom installs (implicit source).
+  Explicit `install @mgr NAME SOURCE` and remove/update are unaffected.
+- Use regex alternation (`npm:(.+)|gh:(.+)`) to support multiple source formats.
+- `pkgman doctor` warns when a registered manager's `name_regex` is invalid.
 
 ## Keeping this file up to date
 

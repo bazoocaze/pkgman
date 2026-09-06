@@ -38,6 +38,7 @@ KNOWN_MANAGERS: dict[str, dict[str, str | list[str] | None]] = {
         "install": ["pi", "install", "{source}"],
         "remove": ["pi", "remove", "{source}"],
         "update": ["pi", "update", "{source}"],
+        "name_regex": r"npm:(?:@[^/]+/)?(.+)",
     },
     "uv": {
         "exe": "uv",

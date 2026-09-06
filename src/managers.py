@@ -7,6 +7,7 @@ Custom managers defined in the JSON database are executed with placeholder subst
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
@@ -92,6 +93,7 @@ class CustomManager:
     install_cmd: list[str] | str | None = None
     remove_cmd: list[str] | str | None = None
     update_cmd: list[str] | str | None = None
+    name_regex: str | None = None
 
     @classmethod
     def from_dict(cls, name: str, data: dict) -> CustomManager:
@@ -101,7 +103,29 @@ class CustomManager:
             install_cmd=data.get("install"),
             remove_cmd=data.get("remove"),
             update_cmd=data.get("update"),
+            name_regex=data.get("name_regex"),
         )
+
+    def extract_name(self, arg: str) -> str | None:
+        """Extract a package name from a source argument using ``name_regex``.
+
+        Returns the first non-empty capture group, or the full match when no
+        group is present. Returns None when no regex is configured, the regex
+        is invalid, or it does not match.
+        """
+        if not self.name_regex:
+            return None
+        try:
+            m = re.match(self.name_regex, arg)
+        except re.error:
+            return None
+        if not m:
+            return None
+        if m.lastindex:
+            for i in range(1, m.lastindex + 1):
+                if m.group(i):
+                    return m.group(i)
+        return m.group(0)
 
 
 # ---------------------------------------------------------------------------
