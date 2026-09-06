@@ -27,6 +27,7 @@ pkgman list                                          # list registered packages
 pkgman list --json                                   # list as JSON
 pkgman configure                                     # detect known managers, add interactively
 pkgman configure -y                                  # non-interactive: add all detected
+pkgman update                                         # update pkgman (default when no args)
 pkgman update git                                    # update package by name
 pkgman update git jq                                 # update multiple packages
 pkgman update -a                                     # update ALL packages from the database

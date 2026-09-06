@@ -9,6 +9,9 @@ import sys
 
 from src.commands import Commands
 
+# Package updated by bare `pkgman update` (no NAME, no -a).
+DEFAULT_UPDATE_NAME = "pkgman"
+
 
 # -- argument parsing ----------------------------------------------------
 
@@ -172,6 +175,9 @@ def _handle_update(cmds: Commands, args: argparse.Namespace) -> None:
         cmds.update_all(manager=manager)
     elif names:
         cmds.update(names, manager=manager)
+    elif manager is None:
+        # Bare `pkgman update` → update pkgman itself.
+        cmds.update([DEFAULT_UPDATE_NAME])
     else:
         print("update: error: the following arguments are required: NAME or -a/--all", file=sys.stderr)
         sys.exit(1)

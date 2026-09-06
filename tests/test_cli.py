@@ -324,10 +324,26 @@ def test_update_help():
     assert "--all" in r.stdout
 
 
-def test_update_no_args_exits_nonzero():
-    """update requires at least NAME or -a -> non-zero exit."""
-    r = run("update")
+def test_update_no_args_defaults_to_pkgman(db_path):
+    """Bare `update` defaults to updating pkgman itself."""
+    data = {
+        "version": 2, "sudo": "no",
+        "managers": {"pi": {"install": ["echo"], "remove": ["echo"], "update": ["echo"]}},
+        "packages": [{"type": "pi", "name": "pkgman"}],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    r = run("-f", db_path, "update")
+    assert r.returncode == 0
+    assert "pkgman updated" in r.stdout
+    assert "not found" not in r.stdout
+
+
+def test_update_at_manager_no_args_still_errors(db_path):
+    """`update @pi` without NAME or -a keeps the error."""
+    r = run("-f", db_path, "update", "@pi")
     assert r.returncode != 0
+    assert "required: NAME" in r.stderr
 
 
 def test_update_names(db_path):

@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.2.16] - 2026-09-06
+
+### Changed
+
+- Bare `pkgman update` (no NAME, no `-a`) now defaults to updating pkgman
+  itself (`pkgman update pkgman`).
+- `pkgman update @manager` without NAME or `-a` still exits with an error.
+
 ## [2.2.15] - 2026-09-06
 
 ### Changed
