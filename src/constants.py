@@ -45,6 +45,7 @@ KNOWN_MANAGERS: dict[str, dict[str, str | list[str] | None]] = {
         "install": ["uv", "tool", "install", "{source}"],
         "remove": ["uv", "tool", "uninstall", "{name}"],
         "update": ["uv", "tool", "upgrade", "{name}"],
+        "name_regex": r"(?:git\+https?://[^/]+/[^/]+/|github:[^/]+/)?([^@=<>/]+)",
     },
 }
 

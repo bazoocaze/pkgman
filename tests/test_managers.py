@@ -153,6 +153,18 @@ class TestCustomManager:
         assert cm.extract_name("npm:pi-blackhole") == "pi-blackhole"
         assert cm.extract_name("gh:astral-sh/ruff") == "astral-sh/ruff"
 
+    def test_extract_name_uv_sources(self):
+        cm = CustomManager(
+            name="uv",
+            name_regex=r"(?:git\+https?://[^/]+/[^/]+/|github:[^/]+/)?([^@=<>/]+)",
+        )
+        assert cm.extract_name("git+https://github.com/bazoocaze/pkgman") == "pkgman"
+        assert cm.extract_name("cptr@latest") == "cptr"
+        assert cm.extract_name("ruff") == "ruff"
+        assert cm.extract_name("ruff@0.5.0") == "ruff"
+        assert cm.extract_name("ruff>=0.5") == "ruff"
+        assert cm.extract_name("github:astral-sh/ruff") == "ruff"
+
     def test_extract_name_no_match(self):
         cm = CustomManager(name="pi", name_regex=r"npm:(.+)")
         assert cm.extract_name("git") is None

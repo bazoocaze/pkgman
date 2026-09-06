@@ -286,7 +286,7 @@ File: `~/.config/.pkgman_database.json` (default) or custom via `-f`/`--file`
   "version": 2,
   "sudo": "no",
   "managers": {
-    "uv": {"install": ["uv", "tool", "install", "{source}"], "remove": ["uv", "tool", "uninstall", "{source}"], "update": ["uv", "tool", "upgrade", "{source}"]},
+    "uv": {"install": ["uv", "tool", "install", "{source}"], "remove": ["uv", "tool", "uninstall", "{name}"], "update": ["uv", "tool", "upgrade", "{name}"], "name_regex": "(?:git\\+https?://[^/]+/[^/]+/|github:[^/]+/)?([^@=<>/]+)"},
     "bash": {"install": "curl -fsSL {source} | bash", "remove": null, "update": null},
     "zsh": {"install": "curl -fsSL {source} | zsh", "remove": null, "update": null},
     "pi": {"install": ["pi", "install", "{source}"], "remove": ["pi", "remove", "{source}"], "update": ["pi", "update", "{source}"], "name_regex": "npm:(?:@[^/]+/)?(.+)"}
@@ -316,6 +316,8 @@ used as `name` and the original argument is stored as `source`:
 ```
 pkgman install @pi npm:pi-blackhole          # name_regex "npm:(?:@[^/]+/)?(.+)" → name=pi-blackhole, source=npm:pi-blackhole
 pkgman install @pi npm:@ff-labs/pi-fff       # → name=pi-fff (scoped scope stripped), source=npm:@ff-labs/pi-fff
+pkgman install @uv cptr@latest               # name_regex "(?:git\+https?://[^/]+/[^/]+/|github:[^/]+/)?([^@=<>/]+)" → name=cptr, source=cptr@latest
+pkgman install @uv git+https://github.com/bazoocaze/pkgman   # → name=pkgman
 ```
 
 - Uses `re.match`; the **first non-empty capture group** is returned, else
@@ -324,6 +326,9 @@ pkgman install @pi npm:@ff-labs/pi-fff       # → name=pi-fff (scoped scope str
   Explicit `install @mgr NAME SOURCE` and remove/update are unaffected.
 - Use regex alternation (`npm:(.+)|gh:(.+)`) to support multiple source formats.
 - `pkgman doctor` warns when a registered manager's `name_regex` is invalid.
+- Built-in `uv` manager ships with a `name_regex` that handles git URLs
+  (`git+https://host/owner/repo`), `github:owner/repo` shorthand, `name@version`
+  and `name>=spec` specifiers; plain names pass through.
 
 ## Keeping this file up to date
 

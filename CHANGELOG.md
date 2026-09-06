@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.2.15] - 2026-09-06
+
+### Changed
+
+- Built-in `uv` manager now ships with a `name_regex`: single-argument
+  installs like `pkgman install @uv <source>` extract the package name from
+  the source.
+  - `git+https://github.com/bazoocaze/pkgman` → name `pkgman`
+  - `cptr@latest` → name `cptr`
+  - Also handles `github:owner/repo` shorthand, `name@version` and
+    `name>=spec` specifiers; plain names pass through.
+  - Existing databases with `uv` registered without `name_regex` are offered
+    the field as an update on `configure`.
+
 ## [2.2.14] - 2026-09-06
 
 ### Changed
