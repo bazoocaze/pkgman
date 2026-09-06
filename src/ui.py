@@ -7,19 +7,22 @@ from __future__ import annotations
 
 def prompt_checkbox(
     labels: list[str],
+    *,
+    header: str | None = None,
+    prompt: str | None = None,
 ) -> list[int]:
     """Show a numbered checkbox list and return selected indices (0-based).
 
     Input format: space- or comma-separated numbers, ranges (1-3),
     'all', or empty for none.  Repeat until valid.
     """
-    print(f"\nFound {len(labels)} new manager(s):")
+    print(header or f"\nFound {len(labels)} new manager(s):")
     for i, label in enumerate(labels, 1):
         print(f"  [{i}] {label}")
     print()
     while True:
         answer = input(
-            "Select managers to add (numbers, e.g. '1 3' or '1-3' or 'all'): "
+            prompt or "Select managers to add (numbers, e.g. '1 3' or '1-3' or 'all'): "
         ).strip().lower()
         if answer in ("", "none"):
             return []

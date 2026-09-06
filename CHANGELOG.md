@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.2.14] - 2026-09-06
+
+### Changed
+
+- `pkgman configure` now also offers to **update** already-registered known
+  managers that have empty fields (`install`/`remove`/`update`/`name_regex`
+  missing, `null`, or `""`) by filling only those fields with the values from
+  `KNOWN_MANAGERS`, preserving any non-empty user customizations.
+  - Update candidates appear in the interactive checkbox labeled
+    `update: <fields>`; `configure -y` applies them automatically.
+  - Fields with no known value (`null` in `KNOWN_MANAGERS`) are never offered.
+  - `prompt_checkbox` gained optional `header`/`prompt` parameters.
+
 ## [2.2.13] - 2026-09-06
 
 ### Added

@@ -307,59 +307,126 @@ class Commands:
 
     # -- configure --------------------------------------------------------
 
+    @staticmethod
+    def _missing_manager_fields(stored: dict, known: dict) -> list[str]:
+        """Return known-manager fields that are empty in *stored* but have a
+        value available in *known*.
+
+        An empty field is a missing key, ``None``, or an empty string.
+        Fields with no known value (``None`` in *known*) are never offered.
+        """
+        missing: list[str] = []
+        for field in ("install", "remove", "update", "name_regex"):
+            known_value = known.get(field)
+            if known_value in (None, ""):
+                continue
+            if stored.get(field) in (None, ""):
+                missing.append(field)
+        return missing
+
+    @staticmethod
+    def _configure_label(action: str, mgr_name: str, mgr: dict, missing: list[str]) -> str:
+        """Build a checkbox label for a configure candidate."""
+        if action == "update":
+            return (
+                f"@{mgr_name:<14} ({mgr['exe']}) — "
+                f"update: {', '.join(missing)}"
+            )
+        return f"@{mgr_name:<14} ({mgr['exe']})"
+
     def configure(self, *, yes: bool = False) -> None:
-        """Scan for known managers on the system and offer to add them.
+        """Scan for known managers on the system and offer to add or update them.
 
         In interactive mode (default), shows a checkbox-style list of all
         newly detected managers and lets the user pick which ones to add.
+        Managers that are already registered but have empty fields (with a
+        known value available) are offered as updates to fill those fields,
+        preserving any existing non-empty values.
 
-        If *yes* is True, automatically add all detected managers without
-        prompting (non-interactive mode).
+        If *yes* is True, automatically apply all detected adds and updates
+        without prompting (non-interactive mode).
         """
         managers = self.store.managers
 
         # -- collect candidates ------------------------------------------
-        candidates: list[tuple[str, dict]] = []
+        new_candidates: list[tuple[str, dict]] = []
+        update_candidates: list[tuple[str, dict, list[str]]] = []
         for mgr_name, mgr in KNOWN_MANAGERS.items():
-            if mgr_name in managers:
+            stored = managers.get(mgr_name)
+            if stored is None:
+                if self._sys_check.which(mgr["exe"]) is None:
+                    print(f"Manager '@{mgr_name}' ({mgr['exe']!r}) not found on PATH — skipping.")
+                    continue
+                new_candidates.append((mgr_name, mgr))
+                continue
+            missing = self._missing_manager_fields(stored, mgr)
+            if missing:
+                update_candidates.append((mgr_name, mgr, missing))
+            else:
                 print(f"Manager '@{mgr_name}' already registered — skipping.")
-                continue
-            if self._sys_check.which(mgr["exe"]) is None:
-                print(f"Manager '@{mgr_name}' ({mgr['exe']!r}) not found on PATH — skipping.")
-                continue
-            candidates.append((mgr_name, mgr))
 
-        if not candidates:
+        if not new_candidates and not update_candidates:
             print("\nNo new managers found.")
             print_manager_summary(managers)
             return
+
+        # -- combined selection list -------------------------------------
+        candidates: list[tuple[str, str, dict, list[str]]] = [
+            ("add", name, mgr, []) for name, mgr in new_candidates
+        ]
+        candidates += [
+            ("update", name, mgr, missing)
+            for name, mgr, missing in update_candidates
+        ]
 
         # -- select ------------------------------------------------------
         if yes:
             selected = candidates
         else:
-            labels = [f"@{name:<14} ({mgr['exe']})" for name, mgr in candidates]
-            selected = [candidates[i] for i in prompt_checkbox(labels)]
+            labels = [
+                self._configure_label(action, name, mgr, missing)
+                for action, name, mgr, missing in candidates
+            ]
+            header = (
+                f"\nFound {len(new_candidates)} new, "
+                f"{len(update_candidates)} update candidate(s):"
+            )
+            prompt = (
+                "Select managers to add or update "
+                "(numbers, e.g. '1 3' or '1-3' or 'all'): "
+            )
+            selected = [candidates[i] for i in prompt_checkbox(labels, header=header, prompt=prompt)]
 
-        # -- add ---------------------------------------------------------
+        # -- apply -------------------------------------------------------
         added = 0
-        for mgr_name, mgr in selected:
-            entry: dict = {
-                "install": mgr["install"],
-                "remove": mgr["remove"],
-                "update": mgr["update"],
-            }
-            if mgr.get("name_regex"):
-                entry["name_regex"] = mgr["name_regex"]
-            managers[mgr_name] = entry
-            added += 1
-            print(f"  -> '@{mgr_name}' added.")
+        updated = 0
+        for action, mgr_name, mgr, missing in selected:
+            if action == "add":
+                entry: dict = {
+                    "install": mgr["install"],
+                    "remove": mgr["remove"],
+                    "update": mgr["update"],
+                }
+                if mgr.get("name_regex"):
+                    entry["name_regex"] = mgr["name_regex"]
+                managers[mgr_name] = entry
+                added += 1
+                print(f"  -> '@{mgr_name}' added.")
+            else:  # update
+                stored = managers[mgr_name]
+                for field in missing:
+                    stored[field] = mgr[field]
+                updated += 1
+                print(f"  -> '@{mgr_name}' updated ({', '.join(missing)}).")
 
-        if added:
+        if added or updated:
             self.store.save()
-            print(f"\n{added} manager(s) added to database.")
+            if added:
+                print(f"\n{added} manager(s) added to database.")
+            if updated:
+                print(f"\n{updated} manager(s) updated in database.")
         else:
-            print("\nNo managers added.")
+            print("\nNo managers added or updated.")
 
         # -- summary ------------------------------------------------------
         print_manager_summary(managers)

@@ -166,7 +166,7 @@ format_package_list(packages: list[dict], *, json_output: bool = False) -> str
 
 ### src.ui
 ```
-prompt_checkbox(labels: list[str]) -> list[int]
+prompt_checkbox(labels: list[str], *, header: str|None = None, prompt: str|None = None) -> list[int]
 print_manager_summary(managers: dict) -> None
 ```
 
@@ -240,6 +240,10 @@ Add entry to `KNOWN_MANAGERS` in `constants.py`:
     "name_regex": r"npm:(?:@[^/]+/)?(.+)",             # optional: extract name from single-arg source
 },
 ```
+When the manager is already registered but has empty fields (`install`/`remove`/
+`update`/`name_regex` = missing, `null`, or `""`), `configure` offers an **update**
+option that fills only those fields with the known values, preserving any
+non-empty user customizations.
 For shell-pipe managers (e.g. `bash`, `zsh`), use a string install command:
 ```python
 "name": {

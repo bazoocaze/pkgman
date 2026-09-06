@@ -289,6 +289,30 @@ def test_configure_already_registered(db_path):
     assert "No new managers found" in r.stdout
 
 
+def test_configure_yes_fills_missing_fields(db_path):
+    """configure -y fills empty fields of a registered known manager."""
+    data = {
+        "version": 2,
+        "sudo": "no",
+        "managers": {
+            "pi": {"install": ["pi", "install", "{source}"]},
+        },
+        "packages": [],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    r = run("-f", db_path, "configure", "-y")
+    assert r.returncode == 0
+    assert "updated" in r.stdout
+    with open(db_path) as f:
+        saved = json.load(f)
+    pi = saved["managers"]["pi"]
+    assert pi["remove"] == ["pi", "remove", "{source}"]
+    assert pi["update"] == ["pi", "update", "{source}"]
+    assert pi["name_regex"] == r"npm:(?:@[^/]+/)?(.+)"
+    assert pi["install"] == ["pi", "install", "{source}"]
+
+
 # -- update --------------------------------------------------------------
 
 
