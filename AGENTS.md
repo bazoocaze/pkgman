@@ -20,6 +20,8 @@ pkgman install @uv ruff github:astral-sh/ruff        # uv tool with explicit sou
 pkgman install @bash sdkman https://get.sdkman.io  # script from URL
 pkgman install @zsh oh-my-zsh https://...           # zsh script from URL
 pkgman install @pi name source                       # custom manager
+pkgman install @npm typescript                       # global npm package
+pkgman install @flatpak org.gimp.GIMP                 # Flatpak app (user scope)
 pkgman install -a                                    # replay: reinstall ALL from the database
 pkgman remove git                                    # @auto: finds package by name
 pkgman remove @pi name                               # explicit manager
@@ -77,7 +79,7 @@ pyproject.toml     → build config + entry point (pkgman = "pkgman:main")
 | `ManagerType.PACKAGE`, `.AUTO` | `"package"`, `"auto"` |
 | `SudoSetting.YES`, `.NO` | `"yes"`, `"no"` |
 | `DB_VERSION` | Current schema version (2) |
-| `KNOWN_MANAGERS` | `dict` — `name → {exe, install, remove, update}`. Used by `configure`. |
+| `KNOWN_MANAGERS` | `dict` — `name → {exe, install, remove, update, name_regex?}`. Used by `configure`. Includes `bash`, `zsh`, `pi`, `uv`, `flatpak` (user scope) and `npm` (global `-g`). |
 | `RESERVED_MANAGERS` | `frozenset({"package", "auto"})` — forbidden as custom manager names |
 
 ### src.commands
@@ -290,12 +292,16 @@ File: `~/.config/.pkgman_database.json` (default) or custom via `-f`/`--file`
     "uv": {"install": ["uv", "tool", "install", "{source}"], "remove": ["uv", "tool", "uninstall", "{name}"], "update": ["uv", "tool", "upgrade", "{name}"], "name_regex": "(?:git\\+https?://[^/]+/[^/]+/|github:[^/]+/)?([^@=<>/]+)"},
     "bash": {"install": "curl -fsSL {source} | bash", "remove": null, "update": null},
     "zsh": {"install": "curl -fsSL {source} | zsh", "remove": null, "update": null},
-    "pi": {"install": ["pi", "install", "{source}"], "remove": ["pi", "remove", "{source}"], "update": ["pi", "update", "{source}"], "name_regex": "npm:(?:@[^/]+/)?(.+)"}
+    "pi": {"install": ["pi", "install", "{source}"], "remove": ["pi", "remove", "{source}"], "update": ["pi", "update", "{source}"], "name_regex": "npm:(?:@[^/]+/)?(.+)"},
+    "flatpak": {"install": ["flatpak", "install", "--user", "-y", "flathub", "{source}"], "remove": ["flatpak", "uninstall", "--user", "{name}"], "update": ["flatpak", "update", "--user", "{name}"]},
+    "npm": {"install": ["npm", "install", "-g", "{source}"], "remove": ["npm", "uninstall", "-g", "{name}"], "update": ["npm", "update", "-g", "{name}"]}
   },
   "packages": [
     {"type": "package", "name": "git"},
     {"type": "bash",  "name": "uv", "source": "https://..."},
-    {"type": "uv",      "name": "ruff", "source": "github:astral-sh/ruff"}
+    {"type": "uv",      "name": "ruff", "source": "github:astral-sh/ruff"},
+    {"type": "npm",     "name": "typescript"},
+    {"type": "flatpak", "name": "org.gimp.GIMP"}
   ]
 }
 ```
@@ -330,6 +336,35 @@ pkgman install @uv git+https://github.com/bazoocaze/pkgman   # → name=pkgman
 - Built-in `uv` manager ships with a `name_regex` that handles git URLs
   (`git+https://host/owner/repo`), `github:owner/repo` shorthand, `name@version`
   and `name>=spec` specifiers; plain names pass through.
+
+## Built-in `flatpak` manager
+
+Commands always target the **user** installation (`--user`), so no root is
+required and the database `"sudo"` setting does not apply:
+
+```bash
+pkgman install @flatpak org.gimp.GIMP          # flatpak install --user -y flathub org.gimp.GIMP
+pkgman remove @flatpak org.gimp.GIMP          # flatpak uninstall --user org.gimp.GIMP
+pkgman update @flatpak -a                     # flatpak update --user <each app>
+```
+
+System-wide apps installed via `flatpak install` (without `--user`) are **not**
+covered by this manager — register them only after migrating to user scope.
+
+## Built-in `npm` manager
+
+Operates on **global** packages:
+
+```bash
+pkgman install @npm typescript           # npm install -g typescript
+pkgman install @npm @scope/tool           # scoped names preserved
+pkgman remove @npm typescript            # npm uninstall -g typescript
+pkgman update @npm -a                    # npm update -g <each package>
+```
+
+`@npm` intentionally has **no** `name_regex`: scoped package names
+(`@scope/tool`) are kept intact so remove/update target the real package.
+Node/npm itself must be installed separately (e.g. via NVM or the OS manager).
 
 ## Keeping this file up to date
 

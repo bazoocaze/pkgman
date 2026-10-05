@@ -47,6 +47,20 @@ KNOWN_MANAGERS: dict[str, dict[str, str | list[str] | None]] = {
         "update": ["uv", "tool", "upgrade", "{name}"],
         "name_regex": r"(?:git\+https?://[^/]+/[^/]+/|github:[^/]+/)?([^@=<>/]+)",
     },
+    "flatpak": {
+        "exe": "flatpak",
+        # User scope: works without root, keeping custom managers
+        # independent from the database "sudo" setting.
+        "install": ["flatpak", "install", "--user", "-y", "flathub", "{source}"],
+        "remove": ["flatpak", "uninstall", "--user", "{name}"],
+        "update": ["flatpak", "update", "--user", "{name}"],
+    },
+    "npm": {
+        "exe": "npm",
+        "install": ["npm", "install", "-g", "{source}"],
+        "remove": ["npm", "uninstall", "-g", "{name}"],
+        "update": ["npm", "update", "-g", "{name}"],
+    },
 }
 
 # Current database schema version

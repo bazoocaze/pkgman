@@ -31,4 +31,16 @@ def test_known_managers_values():
             "update": ["uv", "tool", "upgrade", "{name}"],
             "name_regex": r"(?:git\+https?://[^/]+/[^/]+/|github:[^/]+/)?([^@=<>/]+)",
         },
+        "flatpak": {
+            "exe": "flatpak",
+            "install": ["flatpak", "install", "--user", "-y", "flathub", "{source}"],
+            "remove": ["flatpak", "uninstall", "--user", "{name}"],
+            "update": ["flatpak", "update", "--user", "{name}"],
+        },
+        "npm": {
+            "exe": "npm",
+            "install": ["npm", "install", "-g", "{source}"],
+            "remove": ["npm", "uninstall", "-g", "{name}"],
+            "update": ["npm", "update", "-g", "{name}"],
+        },
     }

@@ -2,9 +2,10 @@
 
 import json
 import subprocess
-from unittest.mock import patch, MagicMock
+from unittest.mock import call, patch, MagicMock
 
 import pytest
+from src.constants import KNOWN_MANAGERS
 from src.managers import Manager, CustomManager, ManagerRegistry, _substitute
 from src.runner import ProcessRunner
 from src.database import Database, PackageStore
@@ -335,6 +336,55 @@ class TestCustomManagerExecution:
         reg = ManagerRegistry(store, runner=mock_runner)
         reg.update("foobar", "ruff", "github:astral-sh/ruff")
         mock_runner.run.assert_called_once_with(["foobar", "update", "ruff"], shell=False)
+
+    def test_registry_flatpak_user_scope_commands(self):
+        """The built-in flatpak manager always targets the user installation."""
+        mock_runner = self._make_mock_runner()
+        store = _make_store(managers={
+            name: {k: v for k, v in mgr.items() if k != "exe"}
+            for name, mgr in KNOWN_MANAGERS.items()
+        })
+        reg = ManagerRegistry(store, runner=mock_runner)
+        reg.install("flatpak", "org.gimp.GIMP", "org.gimp.GIMP")
+        reg.remove("flatpak", "org.gimp.GIMP", "org.gimp.GIMP")
+        reg.update("flatpak", "org.gimp.GIMP", "org.gimp.GIMP")
+        assert mock_runner.run.call_args_list == [
+            call(["flatpak", "install", "--user", "-y", "flathub", "org.gimp.GIMP"], shell=False),
+            call(["flatpak", "uninstall", "--user", "org.gimp.GIMP"], shell=False),
+            call(["flatpak", "update", "--user", "org.gimp.GIMP"], shell=False),
+        ]
+
+    def test_registry_npm_global_commands(self):
+        """The built-in npm manager installs/removes/updates global packages."""
+        mock_runner = self._make_mock_runner()
+        store = _make_store(managers={
+            name: {k: v for k, v in mgr.items() if k != "exe"}
+            for name, mgr in KNOWN_MANAGERS.items()
+        })
+        reg = ManagerRegistry(store, runner=mock_runner)
+        reg.install("npm", "typescript", "typescript")
+        reg.remove("npm", "typescript", "typescript")
+        reg.update("npm", "typescript", "typescript")
+        assert mock_runner.run.call_args_list == [
+            call(["npm", "install", "-g", "typescript"], shell=False),
+            call(["npm", "uninstall", "-g", "typescript"], shell=False),
+            call(["npm", "update", "-g", "typescript"], shell=False),
+        ]
+
+    def test_registry_npm_scoped_package_name_preserved(self):
+        """Scoped npm packages keep their full name for remove/update."""
+        mock_runner = self._make_mock_runner()
+        store = _make_store(managers={
+            name: {k: v for k, v in mgr.items() if k != "exe"}
+            for name, mgr in KNOWN_MANAGERS.items()
+        })
+        reg = ManagerRegistry(store, runner=mock_runner)
+        reg.install("npm", "@scope/tool", "@scope/tool")
+        reg.remove("npm", "@scope/tool", "@scope/tool")
+        assert mock_runner.run.call_args_list == [
+            call(["npm", "install", "-g", "@scope/tool"], shell=False),
+            call(["npm", "uninstall", "-g", "@scope/tool"], shell=False),
+        ]
 
     def test_registry_update_null_cmd_is_noop(self):
         mock_runner = self._make_mock_runner()

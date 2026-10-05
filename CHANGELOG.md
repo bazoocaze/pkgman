@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.2.17] - 2026-10-04
+
+### Added
+
+- New built-in `flatpak` manager (detected by `configure`).
+  - Install: `flatpak install --user -y flathub <source>`
+  - Remove: `flatpak uninstall --user <name>`
+  - Update: `flatpak update --user <name>`
+  - Always user scope — no root required and unaffected by `"sudo"`.
+  - System-wide Flatpak apps are not covered.
+- New built-in `npm` manager for **global** packages.
+  - Install: `npm install -g <source>`
+  - Remove: `npm uninstall -g <name>`
+  - Update: `npm update -g <name>`
+  - No `name_regex`, so scoped names (`@scope/tool`) are preserved.
+
 ## [2.2.16] - 2026-09-06
 
 ### Changed

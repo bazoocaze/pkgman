@@ -29,6 +29,8 @@ pkgman install @uv ruff github:astral-sh/ruff        # uv tool with explicit sou
 pkgman install @bash sdkman https://get.sdkman.io  # script from URL
 pkgman install @zsh oh-my-zsh https://...           # zsh script from URL
 pkgman install @pi name source                       # custom manager
+pkgman install @npm typescript                       # global npm package
+pkgman install @flatpak org.gimp.GIMP                 # Flatpak app (user scope)
 pkgman install -a                                    # replay: reinstall ALL from the database
 pkgman remove git                                    # @auto: finds package by name
 pkgman remove @pi name                               # explicit manager
@@ -89,6 +91,13 @@ commands with `sudo`. Custom managers are **not** affected by the sudo setting
 | yum  | `which yum`  | `yum install -y` | `yum remove -y` | `yum update -y` |
 | bash | `which bash` | `curl ... \| bash` | database-only | database-only |
 | zsh  | `which zsh`  | `curl ... \| zsh`  | database-only | database-only |
+| flatpak | `which flatpak` | `flatpak install --user -y flathub` | `flatpak uninstall --user` | `flatpak update --user` |
+| npm | `which npm` | `npm install -g` | `npm uninstall -g` | `npm update -g` |
+
+The built-in `flatpak` manager always uses `--user`, so it works without root
+and is not affected by the database `"sudo"` setting. The built-in `npm`
+manager operates on **global** packages (`-g`); scoped names such as
+`@scope/tool` are preserved, so remove/update work as expected.
 
 ## Database
 
@@ -117,13 +126,25 @@ custom path specified with `-f`/`--file`.
     "pi": {
       "install": ["pi", "install", "{source}"],
       "remove": ["pi", "remote", "{name}"]
+    },
+    "flatpak": {
+      "install": ["flatpak", "install", "--user", "-y", "flathub", "{source}"],
+      "remove": ["flatpak", "uninstall", "--user", "{name}"],
+      "update": ["flatpak", "update", "--user", "{name}"]
+    },
+    "npm": {
+      "install": ["npm", "install", "-g", "{source}"],
+      "remove": ["npm", "uninstall", "-g", "{name}"],
+      "update": ["npm", "update", "-g", "{name}"]
     }
   },
   "packages": [
     {"type": "package", "name": "git"},
     {"type": "pi", "name": "pi-subagents", "source": "npm:@tintinweb/pi-subagents"},
     {"type": "bash", "name": "sdkman", "source": "https://get.sdkman.io"},
-    {"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"}
+    {"type": "uv", "name": "ruff", "source": "github:astral-sh/ruff"},
+    {"type": "npm", "name": "typescript"},
+    {"type": "flatpak", "name": "org.gimp.GIMP"}
   ]
 }
 ```
