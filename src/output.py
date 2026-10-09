@@ -85,6 +85,7 @@ class ReportEntry(NamedTuple):
     name: str
     detail: str = ""
     snippet: str = ""
+    skipped: bool = False
 
 
 @dataclass
@@ -99,14 +100,24 @@ class Report:
     def add_fail(self, ptype: str, name: str, detail: str = "", snippet: str = "") -> None:
         self.entries.append(ReportEntry(False, ptype, name, detail, snippet))
 
+    def add_skip(self, ptype: str, name: str, detail: str = "") -> None:
+        """Record an entry that was not executed (nothing to run)."""
+        self.entries.append(ReportEntry(False, ptype, name, detail, skipped=True))
+
     def print(self) -> None:
         C = _Colors
         ok_count = sum(1 for e in self.entries if e.success)
-        fail_count = len(self.entries) - ok_count
+        skip_count = sum(1 for e in self.entries if e.skipped)
+        fail_count = len(self.entries) - ok_count - skip_count
 
         out_lines: list[str] = []
         for entry in self.entries:
-            icon = f"{C.OK()}✅{C.RESET()}" if entry.success else f"{C.FAIL()}❌{C.RESET()}"
+            if entry.skipped:
+                icon = f"{C.WARN()}⏭{C.RESET()}"
+            elif entry.success:
+                icon = f"{C.OK()}✅{C.RESET()}"
+            else:
+                icon = f"{C.FAIL()}❌{C.RESET()}"
             text = f"  {icon}  {entry.ptype:<8} {entry.name}"
             if entry.detail:
                 text += f"  {entry.detail}"
@@ -116,6 +127,8 @@ class Report:
 
         summary_color = C.OK if fail_count == 0 else C.FAIL
         summary = f"{summary_color()}Summary: {ok_count} succeeded, {fail_count} failed{C.RESET()}"
+        if skip_count:
+            summary += f"{C.WARN()}, {skip_count} skipped{C.RESET()}"
         out_lines.append(summary)
 
         print("\n".join(out_lines))

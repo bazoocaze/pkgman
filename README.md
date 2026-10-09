@@ -89,8 +89,8 @@ commands with `sudo`. Custom managers are **not** affected by the sudo setting
 | brew | `which brew` | `brew install` | `brew uninstall` | `brew upgrade` |
 | apt  | `which apt`  | `apt install -y` | `apt remove -y` | `apt install --only-upgrade -y` |
 | yum  | `which yum`  | `yum install -y` | `yum remove -y` | `yum update -y` |
-| bash | `which bash` | `curl ... \| bash` | database-only | database-only |
-| zsh  | `which zsh`  | `curl ... \| zsh`  | database-only | database-only |
+| bash | `which bash` | `curl ... \| bash` | database-only | re-run installer |
+| zsh  | `which zsh`  | `curl ... \| zsh`  | database-only | re-run installer |
 | flatpak | `which flatpak` | `flatpak install --user -y flathub` | `flatpak uninstall --user` | `flatpak update --user` |
 | npm | `which npm` | `npm install -g` | `npm uninstall -g` | `npm update -g` |
 
@@ -98,6 +98,14 @@ The built-in `flatpak` manager always uses `--user`, so it works without root
 and is not affected by the database `"sudo"` setting. The built-in `npm`
 manager operates on **global** packages (`-g`); scoped names such as
 `@scope/tool` are preserved, so remove/update work as expected.
+
+Script-based managers (`bash`, `zsh`) have no upgrade mechanism, so their
+`update` template is the same as `install`: `pkgman update` re-runs the
+installer, which refreshes the tool to the latest version. Results are
+reported as **reinstalled** to make it clear that the whole script ran again.
+Note that some installers are interactive (sdkman asks before reinstalling,
+the oh-my-zsh installer offers to change your shell), so `update -a` on these
+managers may prompt.
 
 ## Database
 
@@ -156,6 +164,9 @@ Each entry in `managers` defines:
 - `install`: a shell string (with `shell=True`) or a list of arguments for `subprocess`.
   Placeholders `{name}` and `{source}` are substituted at runtime.
 - `remove`: a string, a list, or `null`. If `null`, removal is database-only.
+- `update`: a string, a list, or `null`. If `null`, `pkgman update` warns and
+  skips that package; when it is the same template as `install`, the installer
+  is re-run (reinstall).
 
 Built-in default managers are injected automatically on first
 load or v1 migration. Once a manager key exists in the JSON, it is **never

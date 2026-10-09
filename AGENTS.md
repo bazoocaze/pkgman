@@ -162,7 +162,8 @@ DryRunRunner()               # no-op runner for --no-run; prints commands instea
 Report()
   .add_ok(ptype: str, name: str, detail: str = "") -> None
   .add_fail(ptype: str, name: str, detail: str = "", snippet: str = "") -> None
-  .print() -> None
+  .add_skip(ptype: str, name: str, detail: str = "") -> None   # not executed (⏭)
+  .print() -> None   # "Summary: N succeeded, N failed[, N skipped]"
 
 format_package_list(packages: list[dict], *, json_output: bool = False) -> str
 ```
@@ -243,6 +244,13 @@ Add entry to `KNOWN_MANAGERS` in `constants.py`:
     "name_regex": r"npm:(?:@[^/]+/)?(.+)",             # optional: extract name from single-arg source
 },
 ```
+
+**Script managers** (`bash`, `zsh`) have no upgrade mechanism, so their `update`
+template is the same as `install` — `pkgman update` re-runs the installer
+(reinstall). `Commands._update_action()` returns `"updated" | "reinstalled" |
+"skipped"`: *reinstalled* when `update_cmd == install_cmd`, and *skipped* when
+the manager has no `update` template (the package is warned about instead of
+being reported as updated).
 When the manager is already registered but has empty fields (`install`/`remove`/
 `update`/`name_regex` = missing, `null`, or `""`), `configure` offers an **update**
 option that fills only those fields with the known values, preserving any
@@ -253,7 +261,8 @@ For shell-pipe managers (e.g. `bash`, `zsh`), use a string install command:
     "exe": "executable",
     "install": "curl -fsSL {source} | executable",    # string → shell=True
     "remove": None,                                     # None → database-only removal
-    "update": None,                                     # None → no update command
+    "update": "curl -fsSL {source} | executable",       # same as install → reinstall
+                                          # (None → warn and skip, nothing to run)
 },
 ```
 
@@ -290,7 +299,7 @@ File: `~/.config/.pkgman_database.json` (default) or custom via `-f`/`--file`
   "sudo": "no",
   "managers": {
     "uv": {"install": ["uv", "tool", "install", "{source}"], "remove": ["uv", "tool", "uninstall", "{name}"], "update": ["uv", "tool", "upgrade", "{name}"], "name_regex": "(?:git\\+https?://[^/]+/[^/]+/|github:[^/]+/)?([^@=<>/]+)"},
-    "bash": {"install": "curl -fsSL {source} | bash", "remove": null, "update": null},
+    "bash": {"install": "curl -fsSL {source} | bash", "remove": null, "update": "curl -fsSL {source} | bash"},
     "zsh": {"install": "curl -fsSL {source} | zsh", "remove": null, "update": null},
     "pi": {"install": ["pi", "install", "{source}"], "remove": ["pi", "remove", "{source}"], "update": ["pi", "update", "{source}"], "name_regex": "npm:(?:@[^/]+/)?(.+)"},
     "flatpak": {"install": ["flatpak", "install", "--user", "-y", "flathub", "{source}"], "remove": ["flatpak", "uninstall", "--user", "{name}"], "update": ["flatpak", "update", "--user", "{name}"]},

@@ -11,7 +11,7 @@ from pathlib import Path
 
 from src.constants import KNOWN_MANAGERS, ManagerType, SudoSetting
 from src.database import Database, PackageStore
-from src.managers import ManagerRegistry
+from src.managers import CustomManager, ManagerRegistry
 from src.output import Report, _snippet, format_package_list
 from src.runner import DryRunRunner, ProcessRunner, SubprocessRunner
 from src.sys_check import RealSysCheck, SysCheck
@@ -59,6 +59,23 @@ class Commands:
     def _sudo_for(self, manager: str) -> bool:
         """Sudo only applies to the built-in OS package manager."""
         return self._sudo and manager == ManagerType.PACKAGE
+
+    def _update_action(self, manager: str) -> str:
+        """What an update would do for *manager*: "updated" | "reinstalled" | "skipped".
+
+        Script-based managers have no upgrade mechanism: their ``update``
+        template is the same as ``install``, so the action re-runs the
+        installer (a full reinstall). A manager with no ``update`` template
+        has nothing to run, so it is skipped instead of falsely reported as
+        updated.
+        """
+        mgr = self.registry.get(manager)
+        if isinstance(mgr, CustomManager):
+            if not mgr.update_cmd:
+                return "skipped"
+            if mgr.update_cmd == mgr.install_cmd:
+                return "reinstalled"
+        return "updated"
 
     # -- install ---------------------------------------------------------
 
@@ -260,9 +277,13 @@ class Commands:
             mgr = pkg["type"]
             source = pkg.get("source", name)
             sudo = self._sudo_for(mgr)
+            action = self._update_action(mgr)
+            if action == "skipped":
+                print(f"Warning: '{name}' has no update command under '@{mgr}'. Skipping.")
+                continue
             try:
                 self.registry.update(mgr, name, source, sudo=sudo)
-                print(f"  -> {name} updated.")
+                print(f"  -> {name} {action}.")
             except subprocess.CalledProcessError as e:
                 print(f"  -> {name} update failed (exit {e.returncode}).")
 
@@ -289,9 +310,14 @@ class Commands:
             name = pkg["name"]
             source = pkg.get("source", name)
             sudo = self._sudo_for(ptype)
+            action = self._update_action(ptype)
+            if action == "skipped":
+                report.add_skip(ptype.upper(), name, detail=f"{source} (no update command)")
+                continue
             try:
                 self.registry.update(ptype, name, source, sudo=sudo)
-                report.add_ok(ptype.upper(), name, source)
+                detail = source if action == "updated" else f"{source} ({action})"
+                report.add_ok(ptype.upper(), name, detail)
             except subprocess.CalledProcessError as e:
                 report.add_fail(
                     ptype.upper(), name,

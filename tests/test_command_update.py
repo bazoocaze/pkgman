@@ -56,6 +56,105 @@ def test_update_not_found(db_path, capsys):
     assert "not found" in captured.out
 
 
+def test_update_script_manager_reports_reinstall(db_path, capsys):
+    """Script managers re-run the installer, so the wording is 'reinstalled'."""
+    data = {
+        "version": 2, "sudo": "no",
+        "managers": {
+            "bash": {
+                "install": "curl -fsSL {source} | bash",
+                "remove": None,
+                "update": "curl -fsSL {source} | bash",
+            },
+        },
+        "packages": [{"type": "bash", "name": "sdkman", "source": "https://get.sdkman.io"}],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    cmds = Commands(db_path=db_path)
+    with patch.object(cmds.registry, "update") as mock_update:
+        cmds.update(["sdkman"])
+    mock_update.assert_called_once_with(
+        "bash", "sdkman", "https://get.sdkman.io", sudo=False
+    )
+    captured = capsys.readouterr()
+    assert "sdkman reinstalled" in captured.out
+    assert "sdkman updated" not in captured.out
+
+
+def test_update_all_script_manager_reports_reinstall(db_path, capsys):
+    """update_all marks script managers as reinstalled in the report."""
+    data = {
+        "version": 2, "sudo": "no",
+        "managers": {
+            "bash": {
+                "install": "curl -fsSL {source} | bash",
+                "remove": None,
+                "update": "curl -fsSL {source} | bash",
+            },
+            "uv": {"install": ["uv", "tool", "install", "{source}"],
+                   "remove": ["uv", "tool", "uninstall", "{name}"],
+                   "update": ["uv", "tool", "upgrade", "{name}"]},
+        },
+        "packages": [
+            {"type": "bash", "name": "sdkman", "source": "https://get.sdkman.io"},
+            {"type": "uv", "name": "ruff"},
+        ],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    cmds = Commands(db_path=db_path)
+    with patch.object(cmds.registry, "update"):
+        cmds.update_all()
+    captured = capsys.readouterr()
+    assert "sdkman  https://get.sdkman.io (reinstalled)" in captured.out
+    assert "Summary: 2 succeeded, 0 failed" in captured.out
+
+
+def test_update_skips_manager_without_update_command(db_path, capsys):
+    """A manager with no update template is skipped, not reported as updated."""
+    data = {
+        "version": 2, "sudo": "no",
+        "managers": {"bash": {"install": "curl -fsSL {source} | bash", "remove": None, "update": None}},
+        "packages": [{"type": "bash", "name": "sdkman", "source": "https://get.sdkman.io"}],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    cmds = Commands(db_path=db_path)
+    with patch.object(cmds.registry, "update") as mock_update:
+        cmds.update(["sdkman"])
+    mock_update.assert_not_called()
+    captured = capsys.readouterr()
+    assert "no update command" in captured.out
+    assert "updated" not in captured.out
+
+
+def test_update_all_skips_manager_without_update_command(db_path, capsys):
+    """update_all counts packages with no update template as skipped."""
+    data = {
+        "version": 2, "sudo": "no",
+        "managers": {
+            "bash": {"install": "curl -fsSL {source} | bash", "remove": None, "update": None},
+            "uv": {"install": ["uv", "tool", "install", "{source}"],
+                   "remove": ["uv", "tool", "uninstall", "{name}"],
+                   "update": ["uv", "tool", "upgrade", "{name}"]},
+        },
+        "packages": [
+            {"type": "bash", "name": "sdkman", "source": "https://get.sdkman.io"},
+            {"type": "uv", "name": "ruff"},
+        ],
+    }
+    with open(db_path, "w") as f:
+        json.dump(data, f)
+    cmds = Commands(db_path=db_path)
+    with patch.object(cmds.registry, "update") as mock_update:
+        cmds.update_all()
+    assert mock_update.call_count == 1
+    captured = capsys.readouterr()
+    assert "sdkman  https://get.sdkman.io (no update command)" in captured.out
+    assert "Summary: 1 succeeded, 0 failed, 1 skipped" in captured.out
+
+
 def test_update_all_empty(db_path, capsys):
     """update_all prints message when no packages registered."""
     data = {"version": 2, "sudo": "no", "managers": {}, "packages": []}

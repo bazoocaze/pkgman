@@ -394,3 +394,19 @@ class TestCustomManagerExecution:
         reg = ManagerRegistry(store, runner=mock_runner)
         reg.update("foobar", "sdkman", "https://get.sdkman.io")
         mock_runner.run.assert_not_called()
+
+    def test_registry_script_manager_update_re_runs_installer(self):
+        """Script managers have no upgrade path: update re-runs the installer."""
+        mock_runner = self._make_mock_runner()
+        store = _make_store(managers={
+            "bash": {
+                "install": "curl -fsSL {source} | bash",
+                "remove": None,
+                "update": "curl -fsSL {source} | bash",
+            },
+        })
+        reg = ManagerRegistry(store, runner=mock_runner)
+        reg.update("bash", "sdkman", "https://get.sdkman.io")
+        mock_runner.run.assert_called_once_with(
+            "curl -fsSL https://get.sdkman.io | bash", shell=True
+        )

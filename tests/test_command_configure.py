@@ -295,7 +295,7 @@ def test_configure_no_update_for_none_known_fields(db_path, capsys):
             "bash": {
                 "install": "curl -fsSL {source} | bash",
                 "remove": None,
-                "update": None,
+                "update": "curl -fsSL {source} | bash",
             },
         },
         "packages": [],

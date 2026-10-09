@@ -265,11 +265,7 @@ def test_configure_already_registered(db_path):
         "version": 2,
         "sudo": "no",
         "managers": {
-            first: {
-                "install": ["echo"],
-                "remove": None,
-                "update": None,
-            },
+            first: {k: v for k, v in KNOWN_MANAGERS[first].items() if k != "exe"},
         },
         "packages": [],
     }
@@ -328,7 +324,7 @@ def test_update_no_args_defaults_to_pkgman(db_path):
     """Bare `update` defaults to updating pkgman itself."""
     data = {
         "version": 2, "sudo": "no",
-        "managers": {"pi": {"install": ["echo"], "remove": ["echo"], "update": ["echo"]}},
+        "managers": {"pi": {"install": ["echo", "install"], "remove": ["echo", "remove"], "update": ["echo", "update"]}},
         "packages": [{"type": "pi", "name": "pkgman"}],
     }
     with open(db_path, "w") as f:
@@ -405,7 +401,7 @@ def test_update_at_manager_name(db_path):
     """pkgman update @pi name updates the matching package only."""
     data = {
         "version": 2, "sudo": "no", "managers": {
-            "pi": {"install": ["echo"], "remove": ["echo"], "update": ["echo"]},
+            "pi": {"install": ["echo", "install"], "remove": ["echo", "remove"], "update": ["echo", "update"]},
         },
         "packages": [
             {"type": "pi", "name": "golang", "source": "https://go.dev"},
@@ -424,8 +420,8 @@ def test_update_at_manager_name_mismatch(db_path):
     """pkgman update @pi name warns when package is not of that type."""
     data = {
         "version": 2, "sudo": "no", "managers": {
-            "pi": {"install": ["echo"], "remove": ["echo"], "update": ["echo"]},
-            "uv": {"install": ["echo"], "remove": ["echo"], "update": ["echo"]},
+            "pi": {"install": ["echo", "install"], "remove": ["echo", "remove"], "update": ["echo", "update"]},
+            "uv": {"install": ["echo", "install"], "remove": ["echo", "remove"], "update": ["echo", "update"]},
         },
         "packages": [
             {"type": "uv", "name": "ruff"},

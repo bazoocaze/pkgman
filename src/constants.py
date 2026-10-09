@@ -25,13 +25,15 @@ KNOWN_MANAGERS: dict[str, dict[str, str | list[str] | None]] = {
         "exe": "bash",
         "install": "curl -fsSL {source} | bash",
         "remove": None,
-        "update": None,
+        # Script managers have no upgrade mechanism: update re-runs the
+        # installer, which is the only way to refresh them.
+        "update": "curl -fsSL {source} | bash",
     },
     "zsh": {
         "exe": "zsh",
         "install": "curl -fsSL {source} | zsh",
         "remove": None,
-        "update": None,
+        "update": "curl -fsSL {source} | zsh",
     },
     "pi": {
         "exe": "pi",

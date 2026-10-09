@@ -9,13 +9,13 @@ def test_known_managers_values():
             "exe": "bash",
             "install": "curl -fsSL {source} | bash",
             "remove": None,
-            "update": None,
+            "update": "curl -fsSL {source} | bash",
         },
         "zsh": {
             "exe": "zsh",
             "install": "curl -fsSL {source} | zsh",
             "remove": None,
-            "update": None,
+            "update": "curl -fsSL {source} | zsh",
         },
         "pi": {
             "exe": "pi",

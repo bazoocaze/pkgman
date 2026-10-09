@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.2.18] - 2026-10-08
+
+### Changed
+
+- `pkgman update` for the built-in `bash`/`zsh` managers now re-runs the
+  installer instead of doing nothing (`update` template == `install`).
+  Results are reported as *reinstalled* whenever a manager's update template
+  is identical to its install template.
+  - Existing databases are picked up by `pkgman configure`, which fills the
+    empty `update` field for `@bash`/`@zsh`.
+- `pkgman update` no longer reports success for managers with no `update`
+  template: it warns and skips the package (`update -a` shows a `⏭` entry and
+  a `N skipped` count in the summary).
+
 ## [2.2.17] - 2026-10-04
 
 ### Added
